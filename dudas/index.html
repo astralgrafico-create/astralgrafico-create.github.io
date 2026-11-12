@@ -432,6 +432,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     const h = inf.vence ? (new Date(inf.vence) - Date.now()) / 36e5 : null;
     const deEste = inf.dudas.length;
     poner($("#chips"),
+      inf.prueba ? el("span", { class: "chip urgente" }, "Prueba") : null,
       deEste > 1 ? el("span", { class: "chip" }, `Duda ${inf.dudas.findIndex(x => x.id === d.id) + 1} de ${deEste} de este paciente`) : null,
       inf.vence ? el("span", { class: "chip" + (h < 8 ? " urgente" : "") }, (h < 0 ? "Venció " : "Vence ") + fmtVence(inf.vence)) : null);
 
