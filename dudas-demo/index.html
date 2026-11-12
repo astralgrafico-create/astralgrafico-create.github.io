@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Dudas para validar (demo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Demo: una columna para el celular. Cada informe es una tarjeta; cada duda, su trozo de audio, la frase con lo dudoso en
+   amarillo (como en el Word) y botones grandes. Las respuestas quedan en este celular y salen por WhatsApp. */
+:root {
+  --bg: #eef1ef; --surface: #ffffff; --ink: #1b2321; --muted: #5a6763; --line: #d9dfdc;
+  --accent: #0d6a64; --accent-ink: #ffffff; --accent-soft: #dcefec;
+  --hl: #ffe45c; --hl-ink: #1b2321; --ok: #2b7a4b; --ok-soft: #e1f1e7; --warn: #a8430c; --warn-soft: #fbe9dd;
+  --wa: #1f8f4e; --wa-ink: #ffffff;
+  --font: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #101614; --surface: #19211f; --ink: #e6ecea; --muted: #9ba8a4; --line: #2a3431;
+  --accent: #5bc1b7; --accent-ink: #0a1513; --accent-soft: #173431;
+  --hl: #e9cf3b; --hl-ink: #17170c; --ok: #6cc48e; --ok-soft: #173326; --warn: #f0905c; --warn-soft: #3a2216;
+  --wa: #3cc27a; --wa-ink: #07170e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #101614; --surface: #19211f; --ink: #e6ecea; --muted: #9ba8a4; --line: #2a3431;
+  --accent: #5bc1b7; --accent-ink: #0a1513; --accent-soft: #173431;
+  --hl: #e9cf3b; --hl-ink: #17170c; --ok: #6cc48e; --ok-soft: #173326; --warn: #f0905c; --warn-soft: #3a2216;
+  --wa: #3cc27a; --wa-ink: #07170e; color-scheme: dark }
+
+* { box-sizing: border-box }
+html { background: var(--bg) }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 var(--font); -webkit-text-size-adjust: 100% }
+.pagina { max-width: 640px; margin: 0 auto; padding-block: 20px 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 18px }
+header { display: flex; flex-direction: column; gap: 6px }
+.demo { align-self: flex-start; font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 999px; background: var(--warn-soft); color: var(--warn) }
+h1 { font-size: 1.55rem; line-height: 1.2; margin: 0; text-wrap: balance }
+.resumen { color: var(--muted); margin: 0 }
+.resumen b { color: var(--ink) }
+.nota { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 0; color: var(--muted) }
+#lista { display: flex; flex-direction: column; gap: 16px }
+
+.informe { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden }
+.informe-cab { padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 2px; border-bottom: 1px solid var(--line) }
+.informe-cab h2 { margin: 0; font-size: 1.25rem; line-height: 1.25 }
+.informe-cab .datos { color: var(--muted); font-size: .92rem }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px }
+.chip { font-size: .82rem; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--ink) }
+.chip.urgente { background: var(--warn-soft); color: var(--warn); font-weight: 700 }
+.chip.listo { background: var(--ok-soft); color: var(--ok); font-weight: 700 }
+
+.duda { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px }
+.duda + .duda { border-top: 1px dashed var(--line) }
+.duda-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: var(--muted); font-size: .9rem }
+.seg { font-family: var(--mono); font-size: .88rem; color: var(--ink) }
+.frase { margin: 0; font-size: 1.05rem; min-width: 0; overflow-wrap: anywhere }
+.frase .campo { color: var(--muted); font-size: .9rem; display: block }
+mark { background: var(--hl); color: var(--hl-ink); padding: 1px 4px; border-radius: 4px; font-weight: 700;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone }
+.pista { margin: 0; font-size: .9rem; color: var(--muted) }
+.pista b { color: var(--ink) }
+
+button, .boton { font: inherit; color: inherit; cursor: pointer; border-radius: 12px; min-height: 48px; padding: 10px 14px;
+  border: 1px solid var(--line); background: var(--surface); touch-action: manipulation; text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-align: center }
+button:focus-visible, textarea:focus-visible, .boton:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px }
+button[disabled] { opacity: .55; cursor: default }
+.escuchar { position: relative; overflow: hidden; width: 100%; background: var(--accent-soft); border-color: transparent;
+  font-weight: 700; justify-content: flex-start; gap: 10px }
+.escuchar .barra { position: absolute; inset: auto auto 0 0; height: 4px; width: 0; background: var(--accent); transition: width .2s linear }
+.escuchar svg { width: 22px; height: 22px; fill: var(--accent); flex: none }
+.escuchar .dur { margin-left: auto; font-family: var(--mono); font-weight: 500; font-size: .85rem; color: var(--muted) }
+.acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.bien { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700 }
+.otra { font-weight: 700 }
+.link { background: none; border: none; min-height: 40px; padding: 6px 2px; color: var(--muted); text-decoration: underline;
+  text-underline-offset: 3px; justify-self: start; justify-content: flex-start }
+.editor { display: flex; flex-direction: column; gap: 8px }
+.editor label { font-size: .9rem; color: var(--muted) }
+textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 12px; min-height: 76px; width: 100%; resize: vertical }
+.editor .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.respondida { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; background: var(--ok-soft); border-radius: 12px;
+  padding: 10px 12px }
+.respondida .que { font-weight: 700; color: var(--ok); overflow-wrap: anywhere; min-width: 0 }
+.respondida .que.ojo { color: var(--warn) }
+.error { color: var(--warn); font-size: .92rem; margin: 0 }
+
+/* barra de envío, siempre a la vista */
+.envio { position: sticky; bottom: 0; z-index: 2; background: color-mix(in srgb, var(--bg) 92%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-top: 1px solid var(--line) }
+.envio-in { max-width: 640px; margin: 0 auto; padding: 10px max(16px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  display: grid; grid-template-columns: 1fr auto; gap: 8px 10px; align-items: center }
+.envio .cuenta { font-size: .92rem; color: var(--muted); grid-column: 1 / -1 }
+.envio .cuenta b { color: var(--ink) }
+.wa { background: var(--wa); color: var(--wa-ink); border-color: var(--wa); font-weight: 700 }
+.wa svg { width: 20px; height: 20px; fill: currentColor; flex: none }
+.wa[aria-disabled="true"] { opacity: .5; pointer-events: none }
+.copiar { font-weight: 700 }
+details.vista { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 16px }
+details.vista summary { cursor: pointer; padding: 12px 0; font-weight: 700 }
+details.vista pre { margin: 0 0 14px; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink) }
+footer { color: var(--muted); font-size: .85rem; text-align: center; display: flex; flex-direction: column; gap: 6px; align-items: center }
+@media (prefers-reduced-motion: reduce) { .escuchar .barra { transition: none } }
+</style>
+</head>
+<body>
+<div class="pagina">
+  <header>
+    <span class="demo">Demo · pacientes inventados</span>
+    <h1>Dudas para validar</h1>
+    <p class="resumen" id="resumen">Cargando…</p>
+  </header>
+  <p class="nota">Escucha cada trozo de audio y responde. Al final, toca <b>Enviar por WhatsApp</b>: se arma el mensaje con tus respuestas, numeradas como siempre.</p>
+  <div id="lista"></div>
+  <details class="vista" id="vista" hidden>
+    <summary>Ver el mensaje que se va a enviar</summary>
+    <pre id="texto"></pre>
+  </details>
+  <footer>
+    <span>Es una demo: los pacientes y los audios son inventados (voz sintética) y lo que respondas no cambia ningún informe.</span>
+    <button class="link" type="button" id="reiniciar">Borrar mis respuestas y empezar de nuevo</button>
+  </footer>
+</div>
+<div class="envio">
+  <div class="envio-in">
+    <span class="cuenta" id="cuenta"></span>
+    <a class="boton wa" id="wa" href="#" target="_blank" rel="noopener" aria-disabled="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.2-.2-.5-.3z"/></svg>
+      Enviar por WhatsApp
+    </a>
+    <button class="copiar" type="button" id="copiar" disabled>Copiar</button>
+  </div>
+</div>
+<audio id="reproductor" preload="none" playsinline></audio>
+
+<script>
+(() => {
+  // ---------- datos inventados de la demo ----------
+  const H = 36e5, ahora = Date.now();
+  const INFORMES = [
+    { id: "toffee", paciente: "Toffee", clinica: "Clínica Demo", especie: "Canino", examen: "11 nov", vence: ahora + 5 * H, dudas: [
+      { n: 1, seg: "0:38", campo: "Descripción", antes: "Vesícula biliar distendida, con ", texto: "segmento", despues: " en suspensión.", clip: "toffee-1" },
+      { n: 2, seg: "1:12", campo: "Descripción", antes: "El riñón izquierdo mide ", texto: "[PENDIENTE]", despues: " cm de longitud.", clip: "toffee-2", falta: true },
+      { n: 3, seg: "2:05", campo: "Descripción", antes: "Asas intestinales con engrosamiento de pared y ", texto: "estiraciones", despues: " de la mucosa.", clip: "toffee-3", pista: "estriaciones" } ] },
+    { id: "mishi", paciente: "Mishi", clinica: "Clínica Demo", especie: "Felino", examen: "11 nov", vence: ahora + 27 * H, dudas: [
+      { n: 1, seg: "0:51", campo: "Descripción", antes: "Ambos riñones con ", texto: "distrito", despues: " aumento de la ecogenicidad cortical.", clip: "mishi-1" },
+      { n: 2, seg: "1:30", campo: "Descripción", antes: "Linfonodos mesentéricos ", texto: "hiperecoicos", despues: ", de 4,2 mm.", clip: "mishi-2" } ] },
+    { id: "bruma", paciente: "Bruma", clinica: "Clínica Demo", especie: "Canino", examen: "10 nov", vence: ahora + 29 * H, dudas: [
+      { n: 1, seg: "0:27", campo: "Descripción", antes: "Bazo de tamaño aumentado, con ", texto: "un pódulo", despues: " hipoecoico de 8 mm.", clip: "bruma-1" } ] },
+  ];
+  for (const inf of INFORMES) for (const d of inf.dudas) { d.id = inf.id + "-" + d.n; d.inf = inf; }
+  const TODAS = INFORMES.flatMap(i => i.dudas);
+
+  // ---------- respuestas: quedan en este celular ----------
+  const CLAVE = "dudas-demo-v1";
+  let resp = {};
+  try { resp = JSON.parse(localStorage.getItem(CLAVE) || "{}") || {}; } catch (e) { resp = {}; }
+  const guardar = () => { try { localStorage.setItem(CLAVE, JSON.stringify(resp)); } catch (e) {} };
+
+  const $ = (s) => document.querySelector(s);
+  const lista = $("#lista"), resumen = $("#resumen"), player = $("#reproductor");
+  const cuenta = $("#cuenta"), wa = $("#wa"), copiar = $("#copiar"), vista = $("#vista"), textoPre = $("#texto");
+  let sonando = null, editando = new Set(), errores = {}, enfocar = null, diferido = false;
+  const borradores = {};
+
+  const el = (tag, attrs = {}, ...hijos) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === "class") n.className = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v === true ? "" : v);
+    }
+    for (const h of hijos.flat()) if (h != null && h !== false) n.append(h instanceof Node ? h : document.createTextNode(String(h)));
+    return n;
+  };
+  const icono = (d) => { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("viewBox", "0 0 24 24");
+    s.setAttribute("aria-hidden", "true"); const p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", d); s.append(p); return s; };
+  const PLAY = "M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z";
+  const PAUSA = "M7 5h3.5v14H7zM13.5 5H17v14h-3.5z";
+  const REPETIR = "M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z";
+  const fmtVence = (t) => new Intl.DateTimeFormat("es-CL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit",
+    minute: "2-digit", hourCycle: "h23" }).format(new Date(t)).replace(",", "");
+
+  // ---------- audio: un solo reproductor ----------
+  function tocar(x) {
+    if (sonando === x.id && !player.paused) { player.pause(); return render(); }
+    if (sonando !== x.id) { player.src = "audio/" + x.clip + ".mp3"; sonando = x.id; }
+    else if (player.ended) player.currentTime = 0;
+    player.play().catch(() => { errores[x.id] = "No se pudo reproducir el audio. Prueba de nuevo."; render(); });
+    render();
+  }
+  ["play", "pause", "ended"].forEach(ev => player.addEventListener(ev, () => render()));
+  player.addEventListener("timeupdate", () => {
+    const b = document.querySelector(`[data-barra="${CSS.escape(sonando || "")}"]`);
+    if (b && player.duration) b.style.width = (100 * player.currentTime / player.duration) + "%";
+  });
+
+  function responder(x, tipo, texto) {
+    resp[x.id] = { tipo, texto: texto || "" };
+    editando.delete(x.id); delete borradores[x.id]; delete errores[x.id];
+    guardar(); render();
+  }
+  function reabrir(x) { delete resp[x.id]; guardar(); render(); }
+
+  // ---------- el mensaje para WhatsApp (mismo formato que ya usan) ----------
+  function mensaje() {
+    const bloques = [];
+    for (const inf of INFORMES) {
+      const lineas = inf.dudas.filter(d => resp[d.id]).map(d => {
+        const r = resp[d.id];
+        return `${d.n}. ` + (r.tipo === "bien" ? "Está bien" : r.tipo === "no_se_entiende" ? "No se entiende" : `Dice: «${r.texto}»`);
+      });
+      if (lineas.length) bloques.push(`${inf.paciente} — ${inf.clinica}\n` + lineas.join("\n"));
+    }
+    return bloques.join("\n\n");
+  }
+
+  // ---------- dibujo ----------
+  function vistaDuda(x) {
+    const r = resp[x.id];
+    const cab = el("div", { class: "duda-cab" }, el("span", {}, `Duda ${x.n} de ${x.inf.dudas.length}`), el("span", { class: "seg" }, "seg " + x.seg));
+    const activo = sonando === x.id, suena = activo && !player.paused;
+    const audio = el("button", { class: "escuchar", type: "button", "aria-label": suena ? "Pausar el audio" : "Escuchar el audio", onclick: () => tocar(x) },
+      icono(suena ? PAUSA : (activo && player.ended ? REPETIR : PLAY)),
+      suena ? "Pausar" : (activo && player.ended ? "Escuchar de nuevo" : "Escuchar"),
+      el("span", { class: "barra", "data-barra": x.id, style: activo && player.duration ? `width:${100 * player.currentTime / player.duration}%` : null }));
+    const frase = el("p", { class: "frase" }, el("span", { class: "campo" }, x.campo), x.antes, el("mark", {}, x.texto), x.despues);
+    const pista = x.pista ? el("p", { class: "pista" }, "Puede que diga ", el("b", {}, x.pista), ". Confírmalo escuchando; puede no ser eso.") : null;
+    const err = errores[x.id] ? el("p", { class: "error", role: "alert" }, errores[x.id]) : null;
+
+    let cuerpo;
+    if (r) {
+      const que = r.tipo === "bien" ? "Está bien así" : r.tipo === "no_se_entiende" ? "No se entiende" : "Dice: «" + r.texto + "»";
+      cuerpo = el("div", { class: "respondida" },
+        el("span", { class: "que" + (r.tipo === "no_se_entiende" ? " ojo" : "") }, "✓ " + que),
+        el("button", { class: "link", type: "button", onclick: () => reabrir(x) }, "Cambiar"));
+    } else if (editando.has(x.id)) {
+      const id = "resp-" + x.id;
+      const ta = el("textarea", { id, rows: 3, autocapitalize: "none", spellcheck: "true", oninput: (e) => { borradores[x.id] = e.target.value; } });
+      ta.value = borradores[x.id] ?? (x.falta ? "" : x.texto);
+      cuerpo = el("div", { class: "editor" },
+        el("label", { for: id }, x.falta ? "Escribe el dato que dicta (o una indicación)" : "Escribe lo que dice (o una indicación)"),
+        ta,
+        el("div", { class: "fila" },
+          el("button", { class: "bien", type: "button", onclick: () => { const t = ta.value.trim(); if (!t) { errores[x.id] = "Escribe lo que dice antes de guardar."; return render(); } responder(x, "dice", t); } }, "Guardar"),
+          el("button", { type: "button", onclick: () => { editando.delete(x.id); delete borradores[x.id]; delete errores[x.id]; render(); } }, "Cancelar")));
+      if (enfocar === x.id) { enfocar = null; setTimeout(() => { const t = document.getElementById(id); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 0); }
+    } else {
+      cuerpo = el("div", { class: "editor" },
+        el("div", { class: "acciones" },
+          x.falta ? null : el("button", { class: "bien", type: "button", onclick: () => responder(x, "bien") }, "Está bien así"),
+          el("button", { class: "otra", type: "button", style: x.falta ? "grid-column: 1 / -1" : null, onclick: () => { editando.add(x.id); enfocar = x.id; render(); } }, x.falta ? "Escribir el dato" : "Dice otra cosa")),
+        el("button", { class: "link", type: "button", onclick: () => responder(x, "no_se_entiende") }, "No se entiende"));
+    }
+    return el("div", { class: "duda", id: "duda-" + x.id }, cab, audio, frase, pista, cuerpo, err);
+  }
+
+  function render() {
+    const activo = document.activeElement;
+    if (activo && activo.tagName === "TEXTAREA" && lista.contains(activo)) { diferido = true; return; }
+    diferido = false;
+    const hechas = TODAS.filter(d => resp[d.id]).length, faltan = TODAS.length - hechas;
+    const infFaltan = INFORMES.filter(i => i.dudas.some(d => !resp[d.id])).length;
+    resumen.replaceChildren(...(faltan
+      ? [el("b", {}, `${faltan} ${faltan === 1 ? "duda" : "dudas"} por responder`), ` en ${infFaltan} ${infFaltan === 1 ? "informe" : "informes"}.`]
+      : ["Todo respondido. Ya puedes enviarlo."]));
+    const orden = [...INFORMES].sort((a, b) => (b.dudas.some(d => !resp[d.id])) - (a.dudas.some(d => !resp[d.id])) || a.vence - b.vence);
+    lista.replaceChildren(...orden.map(inf => {
+      const f = inf.dudas.filter(d => !resp[d.id]).length, h = (inf.vence - Date.now()) / H;
+      return el("section", { class: "informe", "aria-label": inf.paciente },
+        el("div", { class: "informe-cab" },
+          el("h2", {}, inf.paciente),
+          el("span", { class: "datos" }, [inf.clinica, inf.especie, "examen " + inf.examen].join(" · ")),
+          el("div", { class: "chips" },
+            f ? el("span", { class: "chip" }, `${f} de ${inf.dudas.length} por responder`) : el("span", { class: "chip listo" }, "Respondido"),
+            f ? el("span", { class: "chip" + (h < 8 ? " urgente" : "") }, "Vence " + fmtVence(inf.vence)) : null)),
+        inf.dudas.map(vistaDuda));
+    }));
+    const txt = mensaje();
+    cuenta.replaceChildren(el("b", {}, `${hechas} de ${TODAS.length}`), " respondidas" + (hechas && faltan ? ". Puedes enviar ahora o terminar primero." : hechas ? "." : ". Responde al menos una para enviar."));
+    wa.href = txt ? "https://wa.me/?text=" + encodeURIComponent(txt) : "#";
+    wa.setAttribute("aria-disabled", txt ? "false" : "true");
+    copiar.disabled = !txt;
+    vista.hidden = !txt; textoPre.textContent = txt;
+  }
+  lista.addEventListener("focusout", () => setTimeout(() => { if (diferido) render(); }, 300));
+
+  copiar.addEventListener("click", async () => {
+    const txt = mensaje(); if (!txt) return;
+    let ok = false;
+    try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) {
+      try { const t = el("textarea", {}); t.value = txt; document.body.append(t); t.select(); ok = document.execCommand("copy"); t.remove(); } catch (e2) {}
+    }
+    copiar.textContent = ok ? "Copiado ✓" : "No se pudo";
+    setTimeout(() => { copiar.textContent = "Copiar"; }, 1800);
+  });
+  $("#reiniciar").addEventListener("click", () => { resp = {}; guardar(); editando.clear(); render(); window.scrollTo({ top: 0, behavior: "smooth" }); });
+  render();
+})();
+</script>
+</body>
+</html>
