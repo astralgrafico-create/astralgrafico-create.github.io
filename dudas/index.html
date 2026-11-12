@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Dudas para validar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Una duda por pantalla. Esta página no trae ningún dato: las dudas y los audios vienen cifrados aparte y se abren
+   en el celular con la clave. Las respuestas quedan en el celular y salen por WhatsApp. */
+:root {
+  --bg: #eef1ef; --surface: #ffffff; --ink: #1b2321; --muted: #5a6763; --line: #d9dfdc;
+  --accent: #0d6a64; --accent-ink: #ffffff; --accent-soft: #dcefec;
+  --hl: #ffe45c; --hl-ink: #1b2321; --ok: #2b7a4b; --ok-soft: #e1f1e7; --warn: #a8430c; --warn-soft: #fbe9dd;
+  --wa: #1f8f4e; --wa-ink: #ffffff;
+  --font: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #101614; --surface: #19211f; --ink: #e6ecea; --muted: #9ba8a4; --line: #2a3431;
+  --accent: #5bc1b7; --accent-ink: #0a1513; --accent-soft: #173431;
+  --hl: #e9cf3b; --hl-ink: #17170c; --ok: #6cc48e; --ok-soft: #173326; --warn: #f0905c; --warn-soft: #3a2216;
+  --wa: #3cc27a; --wa-ink: #07170e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #101614; --surface: #19211f; --ink: #e6ecea; --muted: #9ba8a4; --line: #2a3431;
+  --accent: #5bc1b7; --accent-ink: #0a1513; --accent-soft: #173431;
+  --hl: #e9cf3b; --hl-ink: #17170c; --ok: #6cc48e; --ok-soft: #173326; --warn: #f0905c; --warn-soft: #3a2216;
+  --wa: #3cc27a; --wa-ink: #07170e; color-scheme: dark }
+
+* { box-sizing: border-box }
+html { background: var(--bg) }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 var(--font); -webkit-text-size-adjust: 100% }
+[hidden] { display: none !important }
+.pantalla { max-width: 560px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+h1 { font-size: 1.7rem; line-height: 1.15; margin: 0; text-wrap: balance; overflow-wrap: anywhere }
+h2 { font-size: 1.1rem; margin: 0 }
+p { margin: 0 }
+.muted { color: var(--muted) }
+
+button, .boton { font: inherit; color: inherit; cursor: pointer; border-radius: 12px; min-height: 50px; padding: 10px 14px;
+  border: 1px solid var(--line); background: var(--surface); touch-action: manipulation; text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-align: center; font-weight: 700 }
+button:focus-visible, textarea:focus-visible, input:focus-visible, .boton:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px }
+button[disabled] { opacity: .5; cursor: default }
+.primario { background: var(--accent); color: var(--accent-ink); border-color: var(--accent) }
+.link { background: none; border: none; min-height: 44px; padding: 6px 2px; color: var(--muted); text-decoration: underline;
+  text-underline-offset: 3px; font-weight: 400 }
+input[type="text"], input[type="password"], textarea { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px 14px; width: 100% }
+textarea { min-height: 84px; resize: vertical; background: var(--bg) }
+.error { color: var(--warn); font-size: .95rem }
+
+/* ---- candado ---- */
+#candado { justify-content: center; gap: 18px; padding-block: 24px }
+#candado form { display: flex; flex-direction: column; gap: 12px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 16px; padding: 20px 18px }
+#candado label { font-weight: 700 }
+#clave { font-family: var(--mono); font-size: 1.25rem; letter-spacing: .08em; text-align: center; text-transform: uppercase }
+#candado .pie { font-size: .88rem; text-align: center }
+
+/* ---- una duda ---- */
+#duda { gap: 12px; padding-top: max(12px, env(safe-area-inset-top, 0px)) }
+.barra-sup { display: flex; align-items: center; justify-content: space-between; gap: 12px }
+.cuenta { font-weight: 700 }
+.cerrar { min-height: 40px; padding: 4px 12px; font-weight: 400; font-size: .92rem; color: var(--muted) }
+.avance { display: flex; gap: 4px }
+.avance span { flex: 1; height: 6px; border-radius: 3px; background: var(--line) }
+.avance span.hecha { background: var(--ok) }
+.avance span.aqui { background: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px }
+.quien { display: flex; flex-direction: column; gap: 2px }
+.quien .datos { color: var(--muted); font-size: .95rem }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px }
+.chip { font-size: .82rem; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft) }
+.chip.urgente { background: var(--warn-soft); color: var(--warn); font-weight: 700 }
+.tarjeta { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px 8px; display: flex;
+  flex-direction: column; gap: 12px }
+.donde { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: var(--muted); font-size: .92rem }
+.seg { font-family: var(--mono); font-size: .88rem; color: var(--ink) }
+.frase { font-size: 1.15rem; line-height: 1.45; overflow-wrap: anywhere }
+mark { background: var(--hl); color: var(--hl-ink); padding: 1px 5px; border-radius: 4px; font-weight: 700;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone }
+.pista { font-size: .92rem; color: var(--muted) }
+.pista b { color: var(--ink) }
+.audio { display: grid; grid-template-columns: 1fr auto; gap: 8px }
+.escuchar { position: relative; overflow: hidden; background: var(--accent-soft); border-color: transparent; justify-content: flex-start; gap: 10px; min-height: 56px }
+.escuchar svg, .atras svg { width: 22px; height: 22px; fill: var(--accent); flex: none }
+.escuchar .t { margin-left: auto; font-family: var(--mono); font-weight: 500; font-size: .9rem; color: var(--muted) }
+.escuchar .prog { position: absolute; inset: auto auto 0 0; height: 4px; width: 0; background: var(--accent) }
+.atras { min-height: 56px; font-weight: 400; font-size: .92rem; padding-inline: 12px }
+.audio-nota { grid-column: 1 / -1; font-size: .85rem; color: var(--muted) }
+.acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.acciones .ancho { grid-column: 1 / -1 }
+.editor { display: flex; flex-direction: column; gap: 8px }
+.editor label { font-size: .92rem; color: var(--muted) }
+.respondida { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; background: var(--ok-soft); border-radius: 12px; padding: 12px 14px }
+.respondida .que { font-weight: 700; color: var(--ok); overflow-wrap: anywhere; min-width: 0 }
+.respondida .que.ojo { color: var(--warn) }
+.nav { margin-top: auto; position: sticky; bottom: 0; background: var(--bg); display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  padding-block: 10px max(12px, env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line) }
+
+/* ---- resumen ---- */
+#resumen { gap: 16px; padding-block: max(16px, env(safe-area-inset-top, 0px)) 24px }
+.lista { display: flex; flex-direction: column; gap: 12px }
+.grupo { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden }
+.grupo h2 { padding: 12px 16px 8px }
+.grupo .datos { color: var(--muted); font-weight: 400; font-size: .9rem }
+.fila { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 10px; text-align: left; border: none;
+  border-top: 1px solid var(--line); border-radius: 0; font-weight: 400; padding: 10px 16px; min-height: 52px; background: none }
+.fila .r { overflow-wrap: anywhere; min-width: 0 }
+.fila .r.falta { color: var(--warn); font-weight: 700 }
+.fila .ir { color: var(--muted); font-size: .88rem; flex: none }
+.enviar { display: grid; grid-template-columns: 1fr auto; gap: 10px }
+.wa { background: var(--wa); color: var(--wa-ink); border-color: var(--wa) }
+.wa svg { width: 20px; height: 20px; fill: currentColor; flex: none }
+.wa[aria-disabled="true"] { opacity: .5; pointer-events: none }
+pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px }
+</style>
+</head>
+<body>
+
+<!-- 1. La clave -->
+<main class="pantalla" id="candado">
+  <div>
+    <h1>Dudas para validar</h1>
+    <p class="muted">Escribe la clave para abrirlas.</p>
+  </div>
+  <form id="form-clave" autocomplete="off">
+    <label for="clave">Clave</label>
+    <input id="clave" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX" maxlength="24" required>
+    <p class="error" id="error-clave" role="alert" hidden></p>
+    <button class="primario" type="submit" id="entrar">Entrar</button>
+  </form>
+  <p class="muted pie">La clave no se guarda en el celular. La página se cierra sola a los 10 minutos sin uso.</p>
+</main>
+
+<!-- 2. Una duda -->
+<main class="pantalla" id="duda" hidden>
+  <div class="barra-sup">
+    <span class="cuenta" id="cuenta"></span>
+    <button class="cerrar" type="button" id="cerrar">Cerrar</button>
+  </div>
+  <div class="avance" id="avance" aria-hidden="true"></div>
+  <div class="quien">
+    <h1 id="paciente"></h1>
+    <span class="datos" id="datos"></span>
+    <div class="chips" id="chips"></div>
+  </div>
+  <section class="tarjeta" id="tarjeta"></section>
+  <nav class="nav">
+    <button type="button" id="anterior">‹ Anterior</button>
+    <button type="button" id="siguiente">Siguiente ›</button>
+  </nav>
+</main>
+
+<!-- 3. El resumen y el envío -->
+<main class="pantalla" id="resumen" hidden>
+  <div class="barra-sup">
+    <h1 id="res-titulo"></h1>
+    <button class="cerrar" type="button" id="cerrar2">Cerrar</button>
+  </div>
+  <p class="muted" id="res-nota"></p>
+  <div class="lista" id="res-lista"></div>
+  <div class="enviar" id="res-enviar">
+    <a class="boton wa" id="wa" href="#" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.2-.2-.5-.3z"/></svg>
+      Enviar por WhatsApp
+    </a>
+    <button type="button" id="copiar">Copiar</button>
+  </div>
+  <pre id="res-texto" hidden></pre>
+</main>
+
+<audio id="reproductor" preload="auto" playsinline></audio>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const CIERRE_MIN = 10, GUARDADO = "dudas-respuestas-v1";
+  const pantallas = { candado: $("#candado"), duda: $("#duda"), resumen: $("#resumen") };
+  const player = $("#reproductor");
+  let llave = null, datos = null, DUDAS = [], idx = 0, resp = {}, urls = new Map(), ultimoUso = Date.now();
+  let editando = false, borrador = "", errorDuda = "", fallos = 0, bloqueadoHasta = 0, estadoAudio = "", avanzar = null;
+
+  const el = (tag, attrs = {}, ...hijos) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === "class") n.className = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v === true ? "" : v);
+    }
+    for (const h of hijos.flat()) if (h != null && h !== false) n.append(h instanceof Node ? h : document.createTextNode(String(h)));
+    return n;
+  };
+  const icono = (d) => { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("viewBox", "0 0 24 24");
+    s.setAttribute("aria-hidden", "true"); const p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", d); s.append(p); return s; };
+  const PLAY = "M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z";
+  const PAUSA = "M7 5h3.5v14H7zM13.5 5H17v14h-3.5z";
+  const ATRAS = "M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z";
+  const mmss = (s) => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  const fmtVence = (iso) => new Intl.DateTimeFormat("es-CL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit",
+    minute: "2-digit", hourCycle: "h23", timeZone: "America/Santiago" }).format(new Date(iso)).replace(/,/g, "");
+  const poner = (nodo, ...hijos) => nodo.replaceChildren(...hijos.flat().filter(h => h != null && h !== false));
+  const mostrar = (cual) => { for (const [k, p] of Object.entries(pantallas)) p.hidden = k !== cual; window.scrollTo(0, 0); };
+
+  // ---------- cifrado: todo se abre aquí, en el celular ----------
+  const b64 = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  async function derivar(clave, cfg) {
+    const limpia = clave.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(limpia), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({ name: "PBKDF2", salt: b64(cfg.sal), iterations: cfg.iter, hash: "SHA-256" }, base,
+      { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  }
+  const abrir = (k, buf) => crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.slice(0, 12) }, k, buf.slice(12));
+  const traer = async (ruta) => { const r = await fetch(ruta + "?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) throw new Error("red"); return r; };
+
+  $("#form-clave").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const err = $("#error-clave"), boton = $("#entrar"), campo = $("#clave");
+    const decir = (t) => { err.textContent = t; err.hidden = !t; };
+    if (Date.now() < bloqueadoHasta) return decir(`Demasiados intentos. Espera ${Math.ceil((bloqueadoHasta - Date.now()) / 1000)} segundos.`);
+    if (!window.crypto || !crypto.subtle) return decir("Este navegador no puede abrir la página. Prueba con Safari o Chrome actualizados.");
+    boton.disabled = true; boton.textContent = "Abriendo…"; decir("");
+    try {
+      let cfg, cifrado;
+      try { cfg = await (await traer("cfg.json")).json(); cifrado = await (await traer("datos.bin")).arrayBuffer(); }
+      catch (x) { return decir("No se pudo cargar. Revisa la conexión y vuelve a intentarlo."); }
+      const k = await derivar(campo.value, cfg);
+      let claro;
+      try { claro = await abrir(k, cifrado); }
+      catch (x) {
+        if (++fallos >= 5) { bloqueadoHasta = Date.now() + 30000; fallos = 0; }
+        return decir("Clave incorrecta. Revísala y vuelve a intentarlo.");
+      }
+      fallos = 0; campo.value = "";
+      llave = k; datos = JSON.parse(new TextDecoder().decode(claro));
+      empezar();
+    } finally { boton.disabled = false; boton.textContent = "Entrar"; }
+  });
+
+  function cerrar() {
+    clearTimeout(avanzar);
+    player.pause(); player.removeAttribute("src"); player.load();
+    for (const u of urls.values()) URL.revokeObjectURL(u);
+    urls = new Map(); llave = null; datos = null; DUDAS = []; editando = false; borrador = ""; errorDuda = "";
+    for (const id of ["tarjeta", "res-lista", "chips", "avance"]) $("#" + id).replaceChildren();
+    for (const id of ["res-texto", "paciente", "datos", "cuenta", "res-titulo", "res-nota"]) $("#" + id).textContent = "";
+    $("#wa").href = "#";
+    mostrar("candado");
+  }
+  $("#cerrar").addEventListener("click", cerrar); $("#cerrar2").addEventListener("click", cerrar);
+  ["pointerdown", "keydown", "touchstart"].forEach(ev => document.addEventListener(ev, () => { ultimoUso = Date.now(); }, { passive: true }));
+  const vigilar = () => { if (llave && player.paused && Date.now() - ultimoUso > CIERRE_MIN * 60000) cerrar(); };
+  setInterval(vigilar, 15000); document.addEventListener("visibilitychange", vigilar);
+
+  // ---------- respuestas: quedan en este celular, sin nombres ----------
+  const leer = () => { try { return JSON.parse(localStorage.getItem(GUARDADO) || "{}") || {}; } catch (e) { return {}; } };
+  const guardar = () => { try { localStorage.setItem(GUARDADO, JSON.stringify(resp)); } catch (e) {} };
+
+  function empezar() {
+    ultimoUso = Date.now();
+    if (datos.hasta && Date.now() > new Date(datos.hasta)) { datos = { informes: [] }; return final("Esta lista ya venció", "Pide la lista nueva."); }
+    const informes = [...datos.informes].sort((a, b) => String(a.vence || "9").localeCompare(String(b.vence || "9")));
+    DUDAS = informes.flatMap(inf => inf.dudas.map(d => ({ ...d, inf })));
+    const guardadas = leer(); resp = {};
+    for (const d of DUDAS) if (guardadas[d.id]) resp[d.id] = guardadas[d.id];
+    guardar();
+    if (!DUDAS.length) return final("No hay dudas pendientes", "Cuando haya dudas nuevas, aparecen aquí.");
+    const falta = DUDAS.findIndex(d => !resp[d.id]);
+    if (falta < 0) return verResumen();
+    ir(falta);
+  }
+  function final(titulo, nota) {
+    $("#res-titulo").textContent = titulo; $("#res-nota").textContent = nota;
+    $("#res-lista").replaceChildren(); $("#res-enviar").hidden = true; $("#res-texto").hidden = true; mostrar("resumen");
+  }
+
+  // ---------- audio: el trozo se descifra al abrir la duda ----------
+  async function cargarAudio(d) {
+    if (!d.clip || urls.has(d.clip)) return urls.get(d.clip);
+    const claro = await abrir(llave, await (await traer("a/" + d.clip)).arrayBuffer());
+    if (!llave) return null;
+    const u = URL.createObjectURL(new Blob([claro], { type: "audio/mp4" }));
+    urls.set(d.clip, u); return u;
+  }
+  async function prepararAudio(d) {
+    player.pause(); estadoAudio = d.clip ? "cargando" : "sin"; pintarAudio();
+    if (!d.clip) return;
+    try {
+      const u = await cargarAudio(d);
+      if (!u || DUDAS[idx] !== d) return;
+      player.src = u; player.dataset.arranque = d.arranque || 0; player.dataset.id = d.id; estadoAudio = "listo";
+    } catch (e) { if (DUDAS[idx] === d) estadoAudio = "error"; }
+    pintarAudio();
+    const sig = DUDAS[idx + 1]; if (sig && sig.clip) cargarAudio(sig).catch(() => {});
+  }
+  function tocar() {
+    if (estadoAudio !== "listo") return;
+    if (!player.paused) return player.pause();
+    const arranque = Number(player.dataset.arranque || 0);
+    if (player.ended || !player.dataset.tocado) { try { player.currentTime = arranque; } catch (e) {} player.dataset.tocado = "1"; }
+    player.play().catch(() => { estadoAudio = "error"; pintarAudio(); });
+  }
+  function atras() { if (estadoAudio === "listo") { try { player.currentTime = Math.max(0, player.currentTime - 5); } catch (e) {} if (player.paused) player.play().catch(() => {}); } }
+  function pintarAudio() {
+    const caja = $("#audio"); if (!caja) return;
+    const d = DUDAS[idx]; if (!d) return;
+    if (estadoAudio === "sin") {
+      return caja.replaceChildren(el("p", { class: "audio-nota" }, d.seg ? `Esta duda no trae audio: escúchala en el segundo ${d.seg} del audio original.` : "Es un dato que falta: no tiene un momento del audio."));
+    }
+    const suena = !player.paused && player.dataset.id === d.id;
+    const t = (d.desde || 0) + (estadoAudio === "listo" && player.dataset.tocado ? player.currentTime : (d.arranque || 0));
+    const pct = estadoAudio === "listo" && player.duration && player.dataset.tocado ? 100 * player.currentTime / player.duration : 0;
+    const rotulo = estadoAudio === "cargando" ? "Cargando el audio…" : estadoAudio === "error" ? "No se pudo cargar el audio" : suena ? "Pausar" : (player.ended ? "Escuchar de nuevo" : "Escuchar");
+    poner(caja,
+      el("button", { class: "escuchar", type: "button", id: "btn-escuchar", disabled: estadoAudio !== "listo", onclick: tocar, "aria-label": rotulo },
+        icono(suena ? PAUSA : PLAY), rotulo, el("span", { class: "t", id: "audio-t" }, mmss(t)), el("span", { class: "prog", id: "audio-prog", style: `width:${pct}%` })),
+      el("button", { class: "atras", type: "button", disabled: estadoAudio !== "listo", onclick: atras, "aria-label": "Retroceder 5 segundos" }, icono(ATRAS), "5 s"),
+      estadoAudio === "error" ? el("p", { class: "audio-nota" }, `Revisa la conexión y vuelve a abrir la duda${d.seg ? ", o escúchala en el segundo " + d.seg + " del audio original" : ""}.`) : null);
+  }
+  ["play", "pause", "ended"].forEach(ev => player.addEventListener(ev, pintarAudio));
+  player.addEventListener("timeupdate", () => {
+    ultimoUso = Date.now();
+    const d = DUDAS[idx], t = $("#audio-t"), p = $("#audio-prog");
+    if (d && t) t.textContent = mmss((d.desde || 0) + player.currentTime);
+    if (p && player.duration) p.style.width = (100 * player.currentTime / player.duration) + "%";
+  });
+
+  // ---------- una duda por pantalla ----------
+  function ir(i) {
+    clearTimeout(avanzar);
+    idx = Math.max(0, Math.min(DUDAS.length - 1, i)); editando = false; borrador = ""; errorDuda = "";
+    delete player.dataset.tocado;
+    mostrar("duda"); pintar(); prepararAudio(DUDAS[idx]);
+  }
+  function responder(tipo, texto) {
+    const d = DUDAS[idx];
+    resp[d.id] = { tipo, texto: texto || "" }; guardar(); editando = false; errorDuda = ""; player.pause(); pintar();
+    clearTimeout(avanzar);
+    avanzar = setTimeout(() => {  // pasa sola a la siguiente sin responder
+      if (!llave || DUDAS[idx] !== d) return;
+      const sig = DUDAS.findIndex((x, j) => j > idx && !resp[x.id]);
+      const otra = sig >= 0 ? sig : DUDAS.findIndex(x => !resp[x.id]);
+      otra >= 0 ? ir(otra) : verResumen();
+    }, 650);
+  }
+  const textoResp = (r) => r.tipo === "bien" ? "Está bien así" : r.tipo === "no_se_entiende" ? "No se entiende" : "Dice: «" + r.texto + "»";
+
+  function pintar() {
+    const d = DUDAS[idx], inf = d.inf, r = resp[d.id];
+    const hechas = DUDAS.filter(x => resp[x.id]).length;
+    $("#cuenta").textContent = `Duda ${idx + 1} de ${DUDAS.length}`;
+    $("#avance").replaceChildren(...DUDAS.map((x, j) => el("span", { class: (resp[x.id] ? "hecha" : "") + (j === idx ? " aqui" : "") })));
+    $("#paciente").textContent = inf.paciente;
+    $("#datos").textContent = [inf.clinica, inf.especie, inf.examen ? "examen " + inf.examen : null].filter(Boolean).join(" · ");
+    const h = inf.vence ? (new Date(inf.vence) - Date.now()) / 36e5 : null;
+    const deEste = inf.dudas.length;
+    poner($("#chips"),
+      deEste > 1 ? el("span", { class: "chip" }, `Duda ${inf.dudas.findIndex(x => x.id === d.id) + 1} de ${deEste} de este paciente`) : null,
+      inf.vence ? el("span", { class: "chip" + (h < 8 ? " urgente" : "") }, (h < 0 ? "Venció " : "Vence ") + fmtVence(inf.vence)) : null);
+
+    let cuerpo;
+    if (r && !editando) {
+      cuerpo = el("div", { class: "respondida" },
+        el("span", { class: "que" + (r.tipo === "no_se_entiende" ? " ojo" : "") }, "✓ " + textoResp(r)),
+        el("button", { class: "link", type: "button", onclick: () => { clearTimeout(avanzar); delete resp[d.id]; guardar(); pintar(); } }, "Cambiar"));
+    } else if (editando) {
+      const ta = el("textarea", { id: "escrito", rows: 3, autocapitalize: "none", spellcheck: "true", oninput: (e) => { borrador = e.target.value; } });
+      ta.value = borrador;
+      cuerpo = el("div", { class: "editor" },
+        el("label", { for: "escrito" }, d.falta ? "Escribe el dato que dicta (o una indicación)" : "Escribe lo que dice (o una indicación)"), ta,
+        errorDuda ? el("p", { class: "error", role: "alert" }, errorDuda) : null,
+        el("div", { class: "acciones" },
+          el("button", { class: "primario", type: "button", onclick: () => { const t = ta.value.trim(); if (!t) { errorDuda = "Escribe lo que dice antes de guardar."; return pintar(); } responder("dice", t); } }, "Guardar"),
+          el("button", { type: "button", onclick: () => { editando = false; errorDuda = ""; pintar(); } }, "Cancelar")));
+      setTimeout(() => { const t = $("#escrito"); if (t && document.activeElement !== t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 0);
+    } else {
+      cuerpo = el("div", { class: "editor" },
+        el("div", { class: "acciones" },
+          d.falta ? null : el("button", { class: "primario", type: "button", onclick: () => responder("bien") }, "Está bien así"),
+          el("button", { type: "button", class: d.falta ? "ancho primario" : null, onclick: () => { editando = true; borrador = d.falta ? "" : d.texto; pintar(); } }, d.falta ? "Escribir el dato" : "Dice otra cosa")),
+        el("button", { class: "link", type: "button", onclick: () => responder("no_se_entiende") }, "No se entiende"));
+    }
+    poner($("#tarjeta"),
+      el("div", { class: "donde" }, el("span", {}, d.donde || "Informe"),
+        el("span", { class: "seg" }, d.seg ? (d.audio ? `audio ${d.audio} · ` : "") + "seg " + d.seg : "dato que falta")),
+      el("p", { class: "frase" }, d.antes || "", el("mark", {}, d.texto), d.despues || ""),
+      d.pista ? el("p", { class: "pista" }, "Puede que diga ", el("b", {}, d.pista), ". Confírmalo escuchando; puede no ser eso.") : null,
+      el("div", { class: "audio", id: "audio" }),
+      cuerpo);
+    pintarAudio();
+    $("#anterior").disabled = idx === 0;
+    $("#siguiente").textContent = idx === DUDAS.length - 1 ? (hechas === DUDAS.length ? "Terminar ›" : "Ver resumen ›") : "Siguiente ›";
+  }
+  $("#anterior").addEventListener("click", () => ir(idx - 1));
+  $("#siguiente").addEventListener("click", () => idx === DUDAS.length - 1 ? verResumen() : ir(idx + 1));
+
+  // ---------- resumen y mensaje de WhatsApp (el formato de siempre) ----------
+  function mensaje() {
+    const bloques = [], vistos = new Set();
+    for (const d of DUDAS) {
+      if (vistos.has(d.inf)) continue; vistos.add(d.inf);
+      const lineas = d.inf.dudas.filter(x => resp[x.id]).map(x => `${x.n}. ` + (x.seg ? (x.audio ? `audio ${x.audio}, ` : "") + x.seg + " — " : "") +
+        (resp[x.id].tipo === "bien" ? "Está bien" : resp[x.id].tipo === "no_se_entiende" ? "No se entiende" : `Dice: «${resp[x.id].texto}»`));
+      if (lineas.length) bloques.push(`${d.inf.paciente} — ${d.inf.clinica}\n` + lineas.join("\n"));
+    }
+    return bloques.join("\n\n");
+  }
+  function verResumen() {
+    clearTimeout(avanzar); player.pause();
+    const hechas = DUDAS.filter(d => resp[d.id]).length, faltan = DUDAS.length - hechas;
+    $("#res-titulo").textContent = faltan ? `Faltan ${faltan} de ${DUDAS.length}` : "Todo respondido";
+    $("#res-nota").textContent = faltan ? "Puedes enviar lo que llevas o tocar una duda para responderla." : "Revisa tus respuestas y envíalas. Toca una si quieres cambiarla.";
+    const grupos = [], vistos = new Map();
+    DUDAS.forEach((d, j) => { if (!vistos.has(d.inf)) { vistos.set(d.inf, []); grupos.push(d.inf); } vistos.get(d.inf).push([d, j]); });
+    $("#res-lista").replaceChildren(...grupos.map(inf => el("section", { class: "grupo" },
+      el("h2", {}, inf.paciente, " ", el("span", { class: "datos" }, "· " + inf.clinica)),
+      vistos.get(inf).map(([d, j]) => el("button", { class: "fila", type: "button", onclick: () => ir(j) },
+        el("span", { class: "r" + (resp[d.id] ? "" : " falta") }, `${d.n}. ` + (resp[d.id] ? textoResp(resp[d.id]) : "Sin responder")),
+        el("span", { class: "ir" }, (d.seg ? d.seg + " " : "") + "›"))))));
+    const txt = mensaje();
+    $("#res-enviar").hidden = false;
+    $("#wa").href = txt ? "https://wa.me/?text=" + encodeURIComponent(txt) : "#";
+    $("#wa").setAttribute("aria-disabled", txt ? "false" : "true"); $("#copiar").disabled = !txt;
+    $("#res-texto").textContent = txt; $("#res-texto").hidden = !txt;
+    mostrar("resumen");
+  }
+  $("#copiar").addEventListener("click", async () => {
+    const txt = mensaje(), b = $("#copiar"); if (!txt) return;
+    let ok = false;
+    try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) {
+      try { const t = el("textarea", {}); t.value = txt; document.body.append(t); t.select(); ok = document.execCommand("copy"); t.remove(); } catch (e2) {}
+    }
+    b.textContent = ok ? "Copiado ✓" : "No se pudo"; setTimeout(() => { b.textContent = "Copiar"; }, 1800);
+  });
+})();
+</script>
+</body>
+</html>
