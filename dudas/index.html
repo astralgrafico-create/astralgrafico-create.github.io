@@ -11,7 +11,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
 /* Una duda por pantalla. Esta página no trae ningún dato: las dudas y los audios vienen cifrados aparte y se abren
-   en el celular con la clave. Las respuestas quedan en el celular y salen por WhatsApp. */
+   en el celular con la clave, que se puede guardar en el celular para entrar directo. Las respuestas quedan en el
+   celular y salen por WhatsApp. */
 :root {
   --bg: #eef1ef; --surface: #ffffff; --ink: #1b2321; --muted: #5a6763; --line: #d9dfdc;
   --accent: #0d6a64; --accent-ink: #ffffff; --accent-soft: #dcefec;
@@ -63,6 +64,8 @@ textarea { min-height: 84px; resize: vertical; background: var(--bg) }
 #candado label { font-weight: 700 }
 #clave { font-family: var(--mono); font-size: 1.25rem; letter-spacing: .08em; text-align: center; text-transform: uppercase }
 #candado .pie { font-size: .88rem; text-align: center }
+.recordar { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 400 !important; cursor: pointer }
+.recordar input { width: 22px; height: 22px; accent-color: var(--accent); flex: none }
 
 /* ---- una duda ---- */
 #duda { gap: 12px; padding-top: max(12px, env(safe-area-inset-top, 0px)) }
@@ -134,17 +137,20 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
   <form id="form-clave" autocomplete="off">
     <label for="clave">Clave</label>
     <input id="clave" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX" maxlength="24" required>
+    <label class="recordar"><input type="checkbox" id="recordar" checked> Guardar la clave en este celular</label>
     <p class="error" id="error-clave" role="alert" hidden></p>
     <button class="primario" type="submit" id="entrar">Entrar</button>
+    <button type="button" id="reintentar" hidden>Reintentar</button>
   </form>
-  <p class="muted pie">La clave no se guarda en el celular. La página se cierra sola a los 10 minutos sin uso.</p>
+  <p class="muted pie" id="abriendo" hidden>Abriendo…</p>
+  <p class="muted pie" id="pie-candado">Con la clave guardada, la próxima vez este celular entra directo a las dudas.</p>
 </main>
 
 <!-- 2. Una duda -->
 <main class="pantalla" id="duda" hidden>
   <div class="barra-sup">
     <span class="cuenta" id="cuenta"></span>
-    <button class="cerrar" type="button" id="cerrar">Cerrar</button>
+    <button class="cerrar" type="button" id="cerrar">Salir</button>
   </div>
   <div class="avance" id="avance" aria-hidden="true"></div>
   <div class="quien">
@@ -163,7 +169,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
 <main class="pantalla" id="resumen" hidden>
   <div class="barra-sup">
     <h1 id="res-titulo"></h1>
-    <button class="cerrar" type="button" id="cerrar2">Cerrar</button>
+    <button class="cerrar" type="button" id="cerrar2">Salir</button>
   </div>
   <p class="muted" id="res-nota"></p>
   <div class="lista" id="res-lista"></div>
@@ -187,6 +193,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
   const player = $("#reproductor");
   let llave = null, datos = null, DUDAS = [], idx = 0, resp = {}, urls = new Map(), ultimoUso = Date.now();
   let editando = false, borrador = "", errorDuda = "", fallos = 0, bloqueadoHasta = 0, estadoAudio = "", avanzar = null;
+  let recordada = false, cargado = 0;
 
   const el = (tag, attrs = {}, ...hijos) => {
     const n = document.createElement(tag);
@@ -219,31 +226,82 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
   const abrir = (k, buf) => crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.slice(0, 12) }, k, buf.slice(12));
   const traer = async (ruta) => { const r = await fetch(ruta + "?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) throw new Error("red"); return r; };
 
+  // La llave guardada: queda en el celular como llave que no se puede leer ni copiar (solo usar en esta página).
+  const bd = () => new Promise((ok, no) => { const r = indexedDB.open("dudas-clave", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("k"); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
+  const conBd = async (modo, f) => { const d = await bd(); try { return await new Promise((ok, no) => { const t = d.transaction("k", modo), q = f(t.objectStore("k"));
+    t.oncomplete = () => ok(q.result); t.onerror = t.onabort = () => no(t.error); }); } finally { d.close(); } };
+  const guardarLlave = (k) => conBd("readwrite", o => o.put(k, "llave"));
+  const leerLlave = () => conBd("readonly", o => o.get("llave"));
+  const borrarLlave = () => conBd("readwrite", o => o.delete("llave"));
+
+  const decir = (t) => { const err = $("#error-clave"); err.textContent = t; err.hidden = !t; };
+  const abriendo = (si) => { $("#form-clave").hidden = si; $("#abriendo").hidden = !si; $("#pie-candado").hidden = si; };
+  async function cargarDatos(k) {  // falla con "red" (no se pudo bajar) o "clave" (no abre)
+    let cifrado;
+    try { cifrado = await (await traer("datos.bin")).arrayBuffer(); } catch (x) { throw new Error("red"); }
+    let claro;
+    try { claro = await abrir(k, cifrado); } catch (x) { throw new Error("clave"); }
+    return JSON.parse(new TextDecoder().decode(claro));
+  }
+  async function entrar(clave, recordar) {
+    let cfg;
+    try { cfg = await (await traer("cfg.json")).json(); } catch (x) { throw new Error("red"); }
+    const k = await derivar(clave, cfg), d = await cargarDatos(k);
+    llave = k; datos = d; recordada = false;
+    if (recordar) { try { await guardarLlave(k); recordada = true; } catch (x) {} }
+    empezar();
+  }
+  const SIN_RED = "No se pudo cargar. Revisa la conexión y vuelve a intentarlo.";
+
   $("#form-clave").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const err = $("#error-clave"), boton = $("#entrar"), campo = $("#clave");
-    const decir = (t) => { err.textContent = t; err.hidden = !t; };
+    const boton = $("#entrar"), campo = $("#clave");
     if (Date.now() < bloqueadoHasta) return decir(`Demasiados intentos. Espera ${Math.ceil((bloqueadoHasta - Date.now()) / 1000)} segundos.`);
     if (!window.crypto || !crypto.subtle) return decir("Este navegador no puede abrir la página. Prueba con Safari o Chrome actualizados.");
     boton.disabled = true; boton.textContent = "Abriendo…"; decir("");
     try {
-      let cfg, cifrado;
-      try { cfg = await (await traer("cfg.json")).json(); cifrado = await (await traer("datos.bin")).arrayBuffer(); }
-      catch (x) { return decir("No se pudo cargar. Revisa la conexión y vuelve a intentarlo."); }
-      const k = await derivar(campo.value, cfg);
-      let claro;
-      try { claro = await abrir(k, cifrado); }
-      catch (x) {
-        if (++fallos >= 5) { bloqueadoHasta = Date.now() + 30000; fallos = 0; }
-        return decir("Clave incorrecta. Revísala y vuelve a intentarlo.");
-      }
-      fallos = 0; campo.value = "";
-      llave = k; datos = JSON.parse(new TextDecoder().decode(claro));
-      empezar();
+      await entrar(campo.value, $("#recordar").checked);
+      fallos = 0; campo.value = ""; $("#reintentar").hidden = true;
+    } catch (x) {
+      if (x.message === "red") return decir(SIN_RED);
+      if (++fallos >= 5) { bloqueadoHasta = Date.now() + 30000; fallos = 0; }
+      decir("Clave incorrecta. Revísala y vuelve a intentarlo.");
     } finally { boton.disabled = false; boton.textContent = "Entrar"; }
   });
 
-  function cerrar() {
+  // Al abrir: si el link trae la clave (…/dudas/#CLAVE) o este celular ya la tiene guardada, entra directo.
+  async function arrancar() {
+    if (!window.crypto || !crypto.subtle) return;
+    decir(""); $("#reintentar").hidden = true;
+    let delLink = "";
+    try { delLink = decodeURIComponent(location.hash.slice(1)); } catch (x) {}
+    if (delLink) history.replaceState(null, "", location.pathname + location.search);  // la clave no queda en la barra
+    abriendo(true);
+    try {
+      if (delLink.replace(/[^A-Za-z0-9]/g, "").length >= 8) {
+        try { return await entrar(delLink, true); }
+        catch (x) { if (x.message === "red") { decir(SIN_RED); return; } decir("La clave de ese link ya no sirve. Escribe la clave nueva."); }
+      }
+      let k = null;
+      try { k = await leerLlave(); } catch (x) {}
+      if (!k) return;
+      try { datos = await cargarDatos(k); llave = k; recordada = true; empezar(); }
+      catch (x) {
+        if (x.message === "red") { decir(SIN_RED); $("#reintentar").hidden = false; return; }
+        try { await borrarLlave(); } catch (y) {}
+        decir("La clave cambió. Escribe la clave nueva.");
+      }
+    } finally { abriendo(false); }
+  }
+  $("#reintentar").addEventListener("click", arrancar);
+
+  async function cerrar(preguntar) {
+    if (preguntar === true && recordada) {
+      if (!confirm("Si sales, este celular olvida la clave y habrá que escribirla de nuevo. ¿Salir?")) return;
+      try { await borrarLlave(); } catch (x) {}
+    }
+    recordada = false;
     clearTimeout(avanzar);
     player.pause(); player.removeAttribute("src"); player.load();
     for (const u of urls.values()) URL.revokeObjectURL(u);
@@ -253,9 +311,22 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     $("#wa").href = "#";
     mostrar("candado");
   }
-  $("#cerrar").addEventListener("click", cerrar); $("#cerrar2").addEventListener("click", cerrar);
+  $("#cerrar").addEventListener("click", () => cerrar(true)); $("#cerrar2").addEventListener("click", () => cerrar(true));
   ["pointerdown", "keydown", "touchstart"].forEach(ev => document.addEventListener(ev, () => { ultimoUso = Date.now(); }, { passive: true }));
-  const vigilar = () => { if (llave && player.paused && Date.now() - ultimoUso > CIERRE_MIN * 60000) cerrar(); };
+  // Sin la clave guardada, se cierra sola a los 10 minutos sin uso. Con la clave guardada queda abierta y, al volver
+  // después de un rato, trae las dudas nuevas si las hay.
+  const vigilar = async () => {
+    if (!llave) return;
+    if (!recordada) { if (player.paused && Date.now() - ultimoUso > CIERRE_MIN * 60000) cerrar(); return; }
+    if (document.visibilityState !== "visible" || Date.now() - cargado < 5 * 60000 || !player.paused || editando) return;
+    cargado = Date.now();
+    try {
+      const d = await cargarDatos(llave);
+      if (!llave || JSON.stringify(d) === JSON.stringify(datos)) return;
+      for (const u of urls.values()) URL.revokeObjectURL(u);
+      urls = new Map(); datos = d; empezar();
+    } catch (x) { if (x.message === "clave") { try { await borrarLlave(); } catch (y) {} cerrar(); decir("La clave cambió. Escribe la clave nueva."); } }
+  };
   setInterval(vigilar, 15000); document.addEventListener("visibilitychange", vigilar);
 
   // ---------- respuestas: quedan en este celular, sin nombres ----------
@@ -263,7 +334,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
   const guardar = () => { try { localStorage.setItem(GUARDADO, JSON.stringify(resp)); } catch (e) {} };
 
   function empezar() {
-    ultimoUso = Date.now();
+    ultimoUso = Date.now(); cargado = Date.now();
     if (datos.hasta && Date.now() > new Date(datos.hasta)) { datos = { informes: [] }; return final("Esta lista ya venció", "Pide la lista nueva."); }
     const informes = [...datos.informes].sort((a, b) => String(a.vence || "9").localeCompare(String(b.vence || "9")));
     DUDAS = informes.flatMap(inf => inf.dudas.map(d => ({ ...d, inf })));
@@ -438,6 +509,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     }
     b.textContent = ok ? "Copiado ✓" : "No se pudo"; setTimeout(() => { b.textContent = "Copiar"; }, 1800);
   });
+  arrancar();
 })();
 </script>
 </body>
