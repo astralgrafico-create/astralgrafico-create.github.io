@@ -89,6 +89,8 @@ textarea { min-height: 84px; resize: vertical; background: var(--bg) }
 mark { background: var(--hl); color: var(--hl-ink); padding: 1px 5px; border-radius: 4px; font-weight: 700;
   -webkit-box-decoration-break: clone; box-decoration-break: clone }
 .pista { font-size: .92rem; color: var(--muted) }
+.silencio { font-size: .92rem; background: var(--warn-soft); color: var(--ink); border-radius: 10px; padding: 8px 12px }
+.silencio b { color: var(--warn) }
 .pista b { color: var(--ink) }
 .audio { display: grid; grid-template-columns: 1fr auto; gap: 8px }
 .escuchar { position: relative; overflow: hidden; background: var(--accent-soft); border-color: transparent; justify-content: flex-start; gap: 10px; min-height: 56px }
@@ -479,6 +481,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
         el("span", { class: "seg" }, d.seg ? (d.audio ? `audio ${d.audio} · ` : "") + "seg " + d.seg : "dato que falta")),
       el("p", { class: "frase" }, d.antes || "", el("mark", {}, d.texto), d.despues || ""),
       d.pista ? el("p", { class: "pista" }, "Puede que diga ", el("b", {}, d.pista), ". Confírmalo escuchando; puede no ser eso.") : null,
+      d.silencio ? el("p", { class: "silencio" }, el("b", {}, "Ojo: "), `la transcripción lo pone ${d.silencio}, donde no se escucha voz. Puede ser una palabra inventada: confírmalo escuchando.`) : null,
       el("div", { class: "audio", id: "audio" }),
       cuerpo);
     pintarAudio();
