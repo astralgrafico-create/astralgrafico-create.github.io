@@ -118,6 +118,15 @@ mark { background: var(--hl); color: var(--hl-ink); padding: 1px 5px; border-rad
 .fila .r { overflow-wrap: anywhere; min-width: 0 }
 .fila .r.falta { color: var(--warn); font-weight: 700 }
 .fila .ir { color: var(--muted); font-size: .88rem; flex: none }
+.directo { display: flex; flex-direction: column; gap: 8px }
+.directo button { min-height: 56px; font-size: 1.05rem }
+.estado { font-size: .95rem; color: var(--muted) }
+.estado.ok { color: var(--ok); font-weight: 700 }
+.estado.mal { color: var(--warn); font-weight: 700 }
+details.respaldo { border: 1px solid var(--line); border-radius: 14px; padding: 2px 14px; background: var(--surface) }
+details.respaldo summary { cursor: pointer; padding: 12px 0; color: var(--muted) }
+details.respaldo[open] { padding-bottom: 14px }
+details.respaldo pre { margin-top: 10px; background: var(--bg) }
 .enviar { display: grid; grid-template-columns: 1fr auto; gap: 10px }
 .wa { background: var(--wa); color: var(--wa-ink); border-color: var(--wa) }
 .wa svg { width: 20px; height: 20px; fill: currentColor; flex: none }
@@ -173,14 +182,21 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
   </div>
   <p class="muted" id="res-nota"></p>
   <div class="lista" id="res-lista"></div>
-  <div class="enviar" id="res-enviar">
+  <div class="directo" id="res-directo" hidden>
+    <button class="primario" type="button" id="enviar-directo">Enviar respuestas</button>
+    <p class="estado" id="res-estado" role="status"></p>
+  </div>
+  <details class="respaldo" id="res-respaldo" hidden>
+    <summary id="res-respaldo-titulo">O mándalas por WhatsApp</summary>
+    <div class="enviar" id="res-enviar">
     <a class="boton wa" id="wa" href="#" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.2-.2-.5-.3z"/></svg>
       Enviar por WhatsApp
     </a>
     <button type="button" id="copiar">Copiar</button>
-  </div>
-  <pre id="res-texto" hidden></pre>
+    </div>
+    <pre id="res-texto" hidden></pre>
+  </details>
 </main>
 
 <audio id="reproductor" preload="auto" playsinline></audio>
@@ -188,7 +204,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
 <script>
 (() => {
   const $ = (s) => document.querySelector(s);
-  const CIERRE_MIN = 10, GUARDADO = "dudas-respuestas-v1";
+  const CIERRE_MIN = 10, GUARDADO = "dudas-respuestas-v1", ENVIADAS = "dudas-enviadas-v1", BUZON = "dudas-buzon-v1";
   const pantallas = { candado: $("#candado"), duda: $("#duda"), resumen: $("#resumen") };
   const player = $("#reproductor");
   let llave = null, datos = null, DUDAS = [], idx = 0, resp = {}, urls = new Map(), ultimoUso = Date.now();
@@ -307,7 +323,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     for (const u of urls.values()) URL.revokeObjectURL(u);
     urls = new Map(); llave = null; datos = null; DUDAS = []; editando = false; borrador = ""; errorDuda = "";
     for (const id of ["tarjeta", "res-lista", "chips", "avance"]) $("#" + id).replaceChildren();
-    for (const id of ["res-texto", "paciente", "datos", "cuenta", "res-titulo", "res-nota"]) $("#" + id).textContent = "";
+    for (const id of ["res-texto", "paciente", "datos", "cuenta", "res-titulo", "res-nota", "res-estado"]) $("#" + id).textContent = "";
     $("#wa").href = "#";
     mostrar("candado");
   }
@@ -348,7 +364,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
   }
   function final(titulo, nota) {
     $("#res-titulo").textContent = titulo; $("#res-nota").textContent = nota;
-    $("#res-lista").replaceChildren(); $("#res-enviar").hidden = true; $("#res-texto").hidden = true; mostrar("resumen");
+    $("#res-lista").replaceChildren(); $("#res-directo").hidden = true; $("#res-respaldo").hidden = true; mostrar("resumen");
   }
 
   // ---------- audio: el trozo se descifra al abrir la duda ----------
@@ -496,12 +512,54 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
         el("span", { class: "r" + (resp[d.id] ? "" : " falta") }, `${d.n}. ` + (resp[d.id] ? textoResp(resp[d.id]) : "Sin responder")),
         el("span", { class: "ir" }, (d.seg ? d.seg + " " : "") + "›"))))));
     const txt = mensaje();
-    $("#res-enviar").hidden = false;
+    pintarEnvio();
     $("#wa").href = txt ? "https://wa.me/?text=" + encodeURIComponent(txt) : "#";
     $("#wa").setAttribute("aria-disabled", txt ? "false" : "true"); $("#copiar").disabled = !txt;
     $("#res-texto").textContent = txt; $("#res-texto").hidden = !txt;
     mostrar("resumen");
   }
+  // ---------- envío directo: el celular deja las respuestas en su destino y comprueba que llegaron íntegras ----------
+  const hex = (buf) => [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, "0")).join("");
+  const leerJson = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || "null") || d; } catch (e) { return d; } };
+  const ponerJson = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  const huella = () => JSON.stringify(DUDAS.filter(d => resp[d.id]).map(d => [d.id, resp[d.id].tipo, resp[d.id].texto]));
+  const hora = (iso) => new Intl.DateTimeFormat("es-CL", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso)).replace(/,/g, "");
+  function pintarEnvio(aviso, mal) {
+    const hay = datos && Array.isArray(datos.buzon) && datos.buzon.length > 0, hechas = DUDAS.some(d => resp[d.id]);
+    const b = $("#enviar-directo"), e = $("#res-estado"), env = leerJson(ENVIADAS, null), al_dia = env && env.huella === huella();
+    $("#res-directo").hidden = !hay; $("#res-respaldo").hidden = false;
+    $("#res-respaldo-titulo").textContent = hay ? "O mándalas por WhatsApp" : "Mándalas por WhatsApp";
+    if (!hay) { $("#res-respaldo").open = true; return; }
+    b.disabled = !hechas || al_dia; b.textContent = al_dia ? "Enviadas ✓" : (env ? "Enviar de nuevo" : "Enviar respuestas");
+    e.className = "estado" + (mal ? " mal" : al_dia ? " ok" : "");
+    e.textContent = aviso || (al_dia ? `Llegaron el ${hora(env.hora)}. No hace falta mandarlas por WhatsApp.`
+      : env && hechas ? "Cambiaste o agregaste respuestas después de enviar: envíalas de nuevo."
+      : hechas ? "Llegan directo, sin pasar por WhatsApp." : "Responde al menos una duda para enviar.");
+  }
+  $("#enviar-directo").addEventListener("click", async () => {
+    const b = $("#enviar-directo"); if (!datos || !llave) return;
+    b.disabled = true; b.textContent = "Enviando…";
+    const marca = huella(), ahora = new Date().toISOString();
+    const cuerpo = new TextEncoder().encode(JSON.stringify({ v: 1, enviado: ahora, lista: datos.creado, respuestas: DUDAS.filter(d => resp[d.id]).map(d => (
+      { informe: d.inf.informe || null, paciente: d.inf.paciente, clinica: d.inf.clinica, n: d.n, seg: d.seg || null, duda: d.texto, tipo: resp[d.id].tipo, texto: resp[d.id].texto })) }));
+    const sha = hex(await crypto.subtle.digest("SHA-256", cuerpo));
+    let usados = leerJson(BUZON, {}); usados = usados.lista === datos.creado && Array.isArray(usados.usados) ? usados.usados : [];
+    let ok = false, sinRed = false;
+    for (let i = 0; i < datos.buzon.length && !ok; i++) {
+      if (usados.includes(i)) continue;
+      try {
+        const r = await fetch(datos.buzon[i], { method: "PUT", headers: { "Content-Type": "application/json" }, body: cuerpo });
+        let j = null; try { j = await r.json(); } catch (x) {}
+        usados.push(i); ponerJson(BUZON, { lista: datos.creado, usados });
+        ok = r.ok && !!j && j.sha256Checksum === sha;   // llegó, y llegó tal cual
+      } catch (x) { sinRed = true; break; }
+    }
+    if (!datos) return;
+    if (ok) { ponerJson(ENVIADAS, { huella: marca, hora: ahora }); return pintarEnvio(); }
+    $("#res-respaldo").open = true;
+    pintarEnvio(sinRed ? "No se pudo enviar. Revisa la conexión y vuelve a intentarlo." : "No se pudo enviar desde aquí. Mándalas por WhatsApp, con el botón de abajo.", true);
+  });
+
   $("#copiar").addEventListener("click", async () => {
     const txt = mensaje(), b = $("#copiar"); if (!txt) return;
     let ok = false;
