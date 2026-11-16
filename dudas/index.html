@@ -540,11 +540,15 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
   const hex = (buf) => [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, "0")).join("");
   const leerJson = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || "null") || d; } catch (e) { return d; } };
   const ponerJson = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  const entradas = () => DUDAS.filter(d => enviable(resp[d.id])).map(d => JSON.stringify([d.id, resp[d.id].tipo, resp[d.id].texto]));
   const huella = () => JSON.stringify(DUDAS.filter(d => enviable(resp[d.id])).map(d => [d.id, resp[d.id].tipo, resp[d.id].texto]));
+  // Al día si todo lo respondido que sigue en la lista ya se envió tal cual (cuando se aplica una parte, esas dudas salen
+  // de la lista y lo que queda no hay que mandarlo de nuevo).
+  const alDia = (env) => !!env && (env.huella === huella() || (Array.isArray(env.items) && entradas().length > 0 && entradas().every(x => env.items.includes(x))));
   const hora = (iso) => new Intl.DateTimeFormat("es-CL", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso)).replace(/,/g, "");
   function pintarEnvio(aviso, mal) {
     const hay = datos && Array.isArray(datos.buzon) && datos.buzon.length > 0, hechas = DUDAS.some(d => enviable(resp[d.id]));
-    const b = $("#enviar-directo"), e = $("#res-estado"), env = leerJson(ENVIADAS, null), al_dia = env && env.huella === huella();
+    const b = $("#enviar-directo"), e = $("#res-estado"), env = leerJson(ENVIADAS, null), al_dia = alDia(env);
     $("#res-directo").hidden = !hay; $("#res-respaldo").hidden = false; $("#wa").hidden = ANDRES;
     $("#res-respaldo-titulo").textContent = ANDRES ? (hay ? "O copia tus respuestas" : "Copia tus respuestas") : hay ? "O mándalas por WhatsApp" : "Mándalas por WhatsApp";
     if (!hay) { $("#res-respaldo").open = true; return; }
@@ -575,7 +579,8 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
       } catch (x) { sinRed = true; break; }
     }
     if (!datos) return;
-    if (ok) { ponerJson(ENVIADAS, { huella: marca, hora: ahora }); return pintarEnvio(); }
+    if (ok) { const antes = leerJson(ENVIADAS, null), previos = antes && Array.isArray(antes.items) ? antes.items : [];
+      ponerJson(ENVIADAS, { huella: marca, hora: ahora, items: [...new Set([...previos, ...entradas()])].slice(-500) }); return pintarEnvio(); }
     $("#res-respaldo").open = true;
     pintarEnvio(sinRed ? "No se pudo enviar. Revisa la conexión y vuelve a intentarlo." : ANDRES ? "No se pudo enviar desde aquí. Cópialas y pégalas en la conversación de configuración." : "No se pudo enviar desde aquí. Mándalas por WhatsApp, con el botón de abajo.", true);
   });
