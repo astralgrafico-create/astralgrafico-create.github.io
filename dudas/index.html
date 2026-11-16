@@ -106,6 +106,7 @@ mark { background: var(--hl); color: var(--hl-ink); padding: 1px 5px; border-rad
 .respondida { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; background: var(--ok-soft); border-radius: 12px; padding: 12px 14px }
 .respondida .que { font-weight: 700; color: var(--ok); overflow-wrap: anywhere; min-width: 0 }
 .respondida .que.ojo { color: var(--warn) }
+.respondida .que.pasa { color: var(--muted) }
 .nav { margin-top: auto; position: sticky; bottom: 0; background: var(--bg); display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
   padding-block: 10px max(12px, env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line) }
 
@@ -206,7 +207,19 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
 <script>
 (() => {
   const $ = (s) => document.querySelector(s);
-  const CIERRE_MIN = 10, GUARDADO = "dudas-respuestas-v1", ENVIADAS = "dudas-enviadas-v1", BUZON = "dudas-buzon-v1";
+  const CIERRE_MIN = 10, GUARDADO = "dudas-respuestas-v1", ENVIADAS = "dudas-enviadas-v1", BUZON = "dudas-buzon-v1", QUIEN = "dudas-quien-v1";
+  // Quién revisa en este celular: Cami (lo normal) o Andrés, que hace una primera pasada con su link (…/dudas/?quien=andres;
+  // 16-11-2026). Queda guardado en el celular. Andrés tiene «Pasar a Cami» en vez de «No se entiende», y sus respuestas van
+  // firmadas con su nombre.
+  const ANDRES = (() => {
+    let q = null;
+    try { q = new URLSearchParams(location.search).get("quien"); } catch (e) {}
+    q = q ? (q.toLowerCase().startsWith("andr") ? "andres" : "cami") : null;
+    try { if (q) localStorage.setItem(QUIEN, q); else q = localStorage.getItem(QUIEN); } catch (e) {}
+    return q === "andres";
+  })();
+  const QUIEN_NOMBRE = ANDRES ? "Andrés" : "Cami";
+  const enviable = (r) => !!r && r.tipo !== "pasar";
   const pantallas = { candado: $("#candado"), duda: $("#duda"), resumen: $("#resumen") };
   const player = $("#reproductor");
   let llave = null, datos = null, DUDAS = [], idx = 0, resp = {}, urls = new Map(), ultimoUso = Date.now();
@@ -438,7 +451,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
       otra >= 0 ? ir(otra) : verResumen();
     }, 650);
   }
-  const textoResp = (r) => r.tipo === "bien" ? "Está bien así" : r.tipo === "no_se_entiende" ? "No se entiende" : "Dice: «" + r.texto + "»";
+  const textoResp = (r) => r.tipo === "bien" ? "Está bien así" : r.tipo === "no_se_entiende" ? "No se entiende" : r.tipo === "pasar" ? "Pasa a Cami" : "Dice: «" + r.texto + "»";
 
   function pintar() {
     const d = DUDAS[idx], inf = d.inf, r = resp[d.id];
@@ -450,6 +463,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     const h = inf.vence ? (new Date(inf.vence) - Date.now()) / 36e5 : null;
     const deEste = inf.dudas.length;
     poner($("#chips"),
+      ANDRES ? el("span", { class: "chip" }, "Revisa Andrés") : null,
       inf.prueba ? el("span", { class: "chip urgente" }, "Prueba") : null,
       deEste > 1 ? el("span", { class: "chip" }, `Duda ${inf.dudas.findIndex(x => x.id === d.id) + 1} de ${deEste} de este paciente`) : null,
       inf.vence ? el("span", { class: "chip" + (h < 8 ? " urgente" : "") }, (h < 0 ? "Venció " : "Vence ") + fmtVence(inf.vence)) : null);
@@ -457,7 +471,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     let cuerpo;
     if (r && !editando) {
       cuerpo = el("div", { class: "respondida" },
-        el("span", { class: "que" + (r.tipo === "no_se_entiende" ? " ojo" : "") }, "✓ " + textoResp(r)),
+        el("span", { class: "que" + (r.tipo === "no_se_entiende" ? " ojo" : r.tipo === "pasar" ? " pasa" : "") }, (r.tipo === "pasar" ? "→ " : "✓ ") + textoResp(r)),
         el("button", { class: "link", type: "button", onclick: () => { clearTimeout(avanzar); delete resp[d.id]; guardar(); pintar(); } }, "Cambiar"));
     } else if (editando) {
       const ta = el("textarea", { id: "escrito", rows: 3, autocapitalize: "none", spellcheck: "true", oninput: (e) => { borrador = e.target.value; } });
@@ -474,7 +488,8 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
         el("div", { class: "acciones" },
           d.falta ? null : el("button", { class: "primario", type: "button", onclick: () => responder("bien") }, "Está bien así"),
           el("button", { type: "button", class: d.falta ? "ancho primario" : null, onclick: () => { editando = true; borrador = d.falta ? "" : d.texto; pintar(); } }, d.falta ? "Escribir el dato" : "Dice otra cosa")),
-        el("button", { class: "link", type: "button", onclick: () => responder("no_se_entiende") }, "No se entiende"));
+        ANDRES ? el("button", { class: "link", type: "button", onclick: () => responder("pasar") }, "Pasar a Cami")
+               : el("button", { class: "link", type: "button", onclick: () => responder("no_se_entiende") }, "No se entiende"));
     }
     poner($("#tarjeta"),
       el("div", { class: "donde" }, el("span", {}, d.donde || "Informe"),
@@ -496,7 +511,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     const bloques = [], vistos = new Set();
     for (const d of DUDAS) {
       if (vistos.has(d.inf)) continue; vistos.add(d.inf);
-      const lineas = d.inf.dudas.filter(x => resp[x.id]).map(x => `${x.n}. ` + (x.seg ? (x.audio ? `audio ${x.audio}, ` : "") + x.seg + " — " : "") +
+      const lineas = d.inf.dudas.filter(x => enviable(resp[x.id])).map(x => `${x.n}. ` + (x.seg ? (x.audio ? `audio ${x.audio}, ` : "") + x.seg + " — " : "") +
         (resp[x.id].tipo === "bien" ? "Está bien" : resp[x.id].tipo === "no_se_entiende" ? "No se entiende" : `Dice: «${resp[x.id].texto}»`));
       if (lineas.length) bloques.push(`${d.inf.paciente} — ${d.inf.clinica}\n` + lineas.join("\n"));
     }
@@ -525,25 +540,27 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
   const hex = (buf) => [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, "0")).join("");
   const leerJson = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || "null") || d; } catch (e) { return d; } };
   const ponerJson = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
-  const huella = () => JSON.stringify(DUDAS.filter(d => resp[d.id]).map(d => [d.id, resp[d.id].tipo, resp[d.id].texto]));
+  const huella = () => JSON.stringify(DUDAS.filter(d => enviable(resp[d.id])).map(d => [d.id, resp[d.id].tipo, resp[d.id].texto]));
   const hora = (iso) => new Intl.DateTimeFormat("es-CL", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso)).replace(/,/g, "");
   function pintarEnvio(aviso, mal) {
-    const hay = datos && Array.isArray(datos.buzon) && datos.buzon.length > 0, hechas = DUDAS.some(d => resp[d.id]);
+    const hay = datos && Array.isArray(datos.buzon) && datos.buzon.length > 0, hechas = DUDAS.some(d => enviable(resp[d.id]));
     const b = $("#enviar-directo"), e = $("#res-estado"), env = leerJson(ENVIADAS, null), al_dia = env && env.huella === huella();
-    $("#res-directo").hidden = !hay; $("#res-respaldo").hidden = false;
-    $("#res-respaldo-titulo").textContent = hay ? "O mándalas por WhatsApp" : "Mándalas por WhatsApp";
+    $("#res-directo").hidden = !hay; $("#res-respaldo").hidden = false; $("#wa").hidden = ANDRES;
+    $("#res-respaldo-titulo").textContent = ANDRES ? (hay ? "O copia tus respuestas" : "Copia tus respuestas") : hay ? "O mándalas por WhatsApp" : "Mándalas por WhatsApp";
     if (!hay) { $("#res-respaldo").open = true; return; }
     b.disabled = !hechas || al_dia; b.textContent = al_dia ? "Enviadas ✓" : (env ? "Enviar de nuevo" : "Enviar respuestas");
     e.className = "estado" + (mal ? " mal" : al_dia ? " ok" : "");
-    e.textContent = aviso || (al_dia ? `Llegaron el ${hora(env.hora)}. No hace falta mandarlas por WhatsApp.`
+    e.textContent = aviso || (al_dia ? (ANDRES ? `Llegaron el ${hora(env.hora)}. Para aplicarlas al tiro, avisa «listo» en la conversación de configuración; si no, las aplica la revisión siguiente.`
+        : `Llegaron el ${hora(env.hora)}. No hace falta mandarlas por WhatsApp.`)
       : env && hechas ? "Cambiaste o agregaste respuestas después de enviar: envíalas de nuevo."
-      : hechas ? "Llegan directo, sin pasar por WhatsApp." : "Responde al menos una duda para enviar.");
+      : hechas ? (ANDRES ? "Llegan directo. Lo que pasaste a Cami queda para ella." : "Llegan directo, sin pasar por WhatsApp.")
+      : ANDRES ? "Resuelve al menos una duda para enviar. Lo que pasaste a Cami queda para ella." : "Responde al menos una duda para enviar.");
   }
   $("#enviar-directo").addEventListener("click", async () => {
     const b = $("#enviar-directo"); if (!datos || !llave) return;
     b.disabled = true; b.textContent = "Enviando…";
     const marca = huella(), ahora = new Date().toISOString();
-    const cuerpo = new TextEncoder().encode(JSON.stringify({ v: 1, enviado: ahora, lista: datos.creado, respuestas: DUDAS.filter(d => resp[d.id]).map(d => (
+    const cuerpo = new TextEncoder().encode(JSON.stringify({ v: 1, enviado: ahora, lista: datos.creado, quien: QUIEN_NOMBRE, respuestas: DUDAS.filter(d => enviable(resp[d.id])).map(d => (
       { informe: d.inf.informe || null, paciente: d.inf.paciente, clinica: d.inf.clinica, n: d.n, seg: d.seg || null, duda: d.texto, tipo: resp[d.id].tipo, texto: resp[d.id].texto })) }));
     const sha = hex(await crypto.subtle.digest("SHA-256", cuerpo));
     let usados = leerJson(BUZON, {}); usados = usados.lista === datos.creado && Array.isArray(usados.usados) ? usados.usados : [];
@@ -560,7 +577,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     if (!datos) return;
     if (ok) { ponerJson(ENVIADAS, { huella: marca, hora: ahora }); return pintarEnvio(); }
     $("#res-respaldo").open = true;
-    pintarEnvio(sinRed ? "No se pudo enviar. Revisa la conexión y vuelve a intentarlo." : "No se pudo enviar desde aquí. Mándalas por WhatsApp, con el botón de abajo.", true);
+    pintarEnvio(sinRed ? "No se pudo enviar. Revisa la conexión y vuelve a intentarlo." : ANDRES ? "No se pudo enviar desde aquí. Cópialas y pégalas en la conversación de configuración." : "No se pudo enviar desde aquí. Mándalas por WhatsApp, con el botón de abajo.", true);
   });
 
   $("#copiar").addEventListener("click", async () => {
@@ -571,6 +588,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     }
     b.textContent = ok ? "Copiado ✓" : "No se pudo"; setTimeout(() => { b.textContent = "Copiar"; }, 1800);
   });
+  if (ANDRES) { document.title = "Dudas para validar · Andrés"; $("#candado h1").textContent = "Dudas para validar · Andrés"; }
   arrancar();
 })();
 </script>
