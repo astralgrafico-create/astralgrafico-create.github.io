@@ -496,6 +496,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
         el("span", { class: "seg" }, d.seg ? (d.audio ? `audio ${d.audio} · ` : "") + "seg " + d.seg : "dato que falta")),
       el("p", { class: "frase" }, d.antes || "", el("mark", {}, d.texto), d.despues || ""),
       d.pista ? el("p", { class: "pista" }, "Puede que diga ", el("b", {}, d.pista), ". Confírmalo escuchando; puede no ser eso.") : null,
+      d.nombre ? el("p", { class: "silencio" }, el("b", {}, "Ojo: "), d.falta ? "falta el nombre del paciente. El informe no sale hasta que lo escribas." : "el nombre del paciente está en duda. El informe no sale hasta confirmarlo.") : null,
       d.silencio ? el("p", { class: "silencio" }, el("b", {}, "Ojo: "), `la transcripción lo pone ${d.silencio}, donde no se escucha voz. Puede ser una palabra inventada: confírmalo escuchando.`) : null,
       el("div", { class: "audio", id: "audio" }),
       cuerpo);
