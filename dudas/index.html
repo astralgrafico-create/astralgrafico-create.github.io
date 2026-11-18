@@ -440,9 +440,9 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     delete player.dataset.tocado;
     mostrar("duda"); pintar(); prepararAudio(DUDAS[idx]);
   }
-  function responder(tipo, texto) {
+  function responder(tipo, texto, propuesta) {
     const d = DUDAS[idx];
-    resp[d.id] = { tipo, texto: texto || "" }; guardar(); editando = false; errorDuda = ""; player.pause(); pintar();
+    resp[d.id] = { tipo, texto: texto || "", ...(propuesta ? { p: 1 } : {}) }; guardar(); editando = false; errorDuda = ""; player.pause(); pintar();
     clearTimeout(avanzar);
     avanzar = setTimeout(() => {  // pasa sola a la siguiente sin responder
       if (!llave || DUDAS[idx] !== d) return;
@@ -486,7 +486,8 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     } else {
       cuerpo = el("div", { class: "editor" },
         el("div", { class: "acciones" },
-          d.falta ? null : el("button", { class: "primario", type: "button", onclick: () => responder("bien") }, "Está bien así"),
+          d.propuesta && !d.falta ? el("button", { class: "ancho primario", type: "button", onclick: () => responder("dice", d.propuesta, true) }, "Sí, dice «" + d.propuesta + "»") : null,
+          d.falta ? null : el("button", { class: d.propuesta ? null : "primario", type: "button", onclick: () => responder("bien") }, "Está bien así"),
           el("button", { type: "button", class: d.falta ? "ancho primario" : null, onclick: () => { editando = true; borrador = d.falta ? "" : d.texto; pintar(); } }, d.falta ? "Escribir el dato" : "Dice otra cosa")),
         ANDRES ? el("button", { class: "link", type: "button", onclick: () => responder("pasar") }, "Pasar a Cami")
                : el("button", { class: "link", type: "button", onclick: () => responder("no_se_entiende") }, "No se entiende"));
@@ -495,7 +496,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
       el("div", { class: "donde" }, el("span", {}, d.donde || "Informe"),
         el("span", { class: "seg" }, d.seg ? (d.audio ? `audio ${d.audio} · ` : "") + "seg " + d.seg : "dato que falta")),
       el("p", { class: "frase" }, d.antes || "", el("mark", {}, d.texto), d.despues || ""),
-      d.pista ? el("p", { class: "pista" }, "Puede que diga ", el("b", {}, d.pista), ". Confírmalo escuchando; puede no ser eso.") : null,
+      d.pista ? el("p", { class: "pista" }, d.propuesta ? "Probablemente dice " : "Puede que diga ", el("b", {}, d.pista), d.propuesta ? ". Escúchalo antes de confirmar; puede no ser eso." : ". Confírmalo escuchando; puede no ser eso.") : null,
       d.nombre ? el("p", { class: "silencio" }, el("b", {}, "Ojo: "), d.falta ? "falta el nombre del paciente. El informe no sale hasta que lo escribas." : "el nombre del paciente está en duda. El informe no sale hasta confirmarlo.") : null,
       d.silencio ? el("p", { class: "silencio" }, el("b", {}, "Ojo: "), `la transcripción lo pone ${d.silencio}, donde no se escucha voz. Puede ser una palabra inventada: confírmalo escuchando.`) : null,
       el("div", { class: "audio", id: "audio" }),
@@ -566,7 +567,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     b.disabled = true; b.textContent = "Enviando…";
     const marca = huella(), ahora = new Date().toISOString();
     const cuerpo = new TextEncoder().encode(JSON.stringify({ v: 1, enviado: ahora, lista: datos.creado, quien: QUIEN_NOMBRE, respuestas: DUDAS.filter(d => enviable(resp[d.id])).map(d => (
-      { informe: d.inf.informe || null, paciente: d.inf.paciente, clinica: d.inf.clinica, n: d.n, seg: d.seg || null, duda: d.texto, tipo: resp[d.id].tipo, texto: resp[d.id].texto })) }));
+      { informe: d.inf.informe || null, paciente: d.inf.paciente, clinica: d.inf.clinica, n: d.n, seg: d.seg || null, duda: d.texto, tipo: resp[d.id].tipo, texto: resp[d.id].texto, ...(resp[d.id].p ? { propuesta: true } : {}) })) }));
     const sha = hex(await crypto.subtle.digest("SHA-256", cuerpo));
     let usados = leerJson(BUZON, {}); usados = usados.lista === datos.creado && Array.isArray(usados.usados) ? usados.usados : [];
     let ok = false, sinRed = false;
