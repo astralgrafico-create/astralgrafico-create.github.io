@@ -107,6 +107,11 @@ mark { background: var(--hl); color: var(--hl-ink); padding: 1px 5px; border-rad
 .respondida .que { font-weight: 700; color: var(--ok); overflow-wrap: anywhere; min-width: 0 }
 .respondida .que.ojo { color: var(--warn) }
 .respondida .que.pasa { color: var(--muted) }
+/* «Así queda la frase» (Cami y Andrés, 21-11-2026): la oración entera con la respuesta puesta */
+.queda { flex-basis: 100%; margin: 0; font-size: .95rem; line-height: 1.4; color: var(--muted); border-left: 3px solid var(--line);
+  padding: 2px 0 2px 10px; overflow-wrap: anywhere }
+.queda .rot { display: block; font-size: .8rem; margin-bottom: 2px }
+.queda b { color: var(--ink) }
 .nav { margin-top: auto; position: sticky; bottom: 0; background: var(--bg); display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
   padding-block: 10px max(12px, env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line) }
 
@@ -223,7 +228,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
   const pantallas = { candado: $("#candado"), duda: $("#duda"), resumen: $("#resumen") };
   const player = $("#reproductor");
   let llave = null, datos = null, DUDAS = [], idx = 0, resp = {}, urls = new Map(), ultimoUso = Date.now();
-  let editando = false, borrador = "", errorDuda = "", fallos = 0, bloqueadoHasta = 0, estadoAudio = "", avanzar = null;
+  let editando = false, completa = false, borrador = "", errorDuda = "", fallos = 0, bloqueadoHasta = 0, estadoAudio = "", avanzar = null;
   let recordada = false, cargado = 0;
 
   const el = (tag, attrs = {}, ...hijos) => {
@@ -336,7 +341,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     clearTimeout(avanzar);
     player.pause(); player.removeAttribute("src"); player.load();
     for (const u of urls.values()) URL.revokeObjectURL(u);
-    urls = new Map(); llave = null; datos = null; DUDAS = []; editando = false; borrador = ""; errorDuda = "";
+    urls = new Map(); llave = null; datos = null; DUDAS = []; editando = false; completa = false; borrador = ""; errorDuda = "";
     for (const id of ["tarjeta", "res-lista", "chips", "avance"]) $("#" + id).replaceChildren();
     for (const id of ["res-texto", "paciente", "datos", "cuenta", "res-titulo", "res-nota", "res-estado"]) $("#" + id).textContent = "";
     $("#wa").href = "#";
@@ -436,14 +441,15 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
   // ---------- una duda por pantalla ----------
   function ir(i) {
     clearTimeout(avanzar);
-    idx = Math.max(0, Math.min(DUDAS.length - 1, i)); editando = false; borrador = ""; errorDuda = "";
+    idx = Math.max(0, Math.min(DUDAS.length - 1, i)); editando = false; completa = false; borrador = ""; errorDuda = "";
     delete player.dataset.tocado;
     mostrar("duda"); pintar(); prepararAudio(DUDAS[idx]);
   }
   function responder(tipo, texto, propuesta) {
     const d = DUDAS[idx];
-    resp[d.id] = { tipo, texto: texto || "", ...(propuesta ? { p: 1 } : {}) }; guardar(); editando = false; errorDuda = ""; player.pause(); pintar();
+    resp[d.id] = { tipo, texto: texto || "", ...(propuesta ? { p: 1 } : {}) }; guardar(); editando = false; completa = false; errorDuda = ""; player.pause(); pintar();
     clearTimeout(avanzar);
+    if (d.corrige && (tipo === "bien" || tipo === "dice")) return;  // Emilio se corrige ahí: se queda para leer cómo queda la frase
     avanzar = setTimeout(() => {  // pasa sola a la siguiente sin responder
       if (!llave || DUDAS[idx] !== d) return;
       const sig = DUDAS.findIndex((x, j) => j > idx && !resp[x.id]);
@@ -451,7 +457,13 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
       otra >= 0 ? ir(otra) : verResumen();
     }, 650);
   }
-  const textoResp = (r) => r.tipo === "bien" ? "Está bien así" : r.tipo === "no_se_entiende" ? "No se entiende" : r.tipo === "pasar" ? "Pasa a Cami" : "Dice: «" + r.texto + "»";
+  const textoResp = (r) => r.tipo === "bien" ? "Está bien así" : r.tipo === "no_se_entiende" ? "No se entiende" : r.tipo === "pasar" ? "Pasa a Cami" : r.tipo === "frase" ? "Frase completa: «" + r.texto + "»" : "Dice: «" + r.texto + "»";
+  // La oración entera con la respuesta puesta (Cami y Andrés, 21-11-2026). Lo que se escribe reemplaza solo lo destacado: si
+  // Emilio se corrigió al dictar y el arranque quedó fuera, aquí se ve que sobra, y se puede corregir la frase completa.
+  const tieneFrase = (d) => typeof d.fa === "string" && typeof d.fd === "string";
+  const fraseEntera = (d, medio) => (d.fa || "") + medio + (d.fd || "");
+  const queda = (d, medio, id) => el("p", { class: "queda", ...(id ? { id } : {}) }, el("span", { class: "rot" }, "Así queda la frase:"), d.fa || "", el("b", {}, medio), d.fd || "");
+  const abrirCompleta = (d, medio) => { clearTimeout(avanzar); editando = true; completa = true; borrador = fraseEntera(d, medio); errorDuda = ""; pintar(); };
 
   function pintar() {
     const d = DUDAS[idx], inf = d.inf, r = resp[d.id];
@@ -470,25 +482,35 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
 
     let cuerpo;
     if (r && !editando) {
+      const medio = r.tipo === "bien" ? d.texto : r.tipo === "dice" ? r.texto : null;
       cuerpo = el("div", { class: "respondida" },
-        el("span", { class: "que" + (r.tipo === "no_se_entiende" ? " ojo" : r.tipo === "pasar" ? " pasa" : "") }, (r.tipo === "pasar" ? "→ " : "✓ ") + textoResp(r)),
-        el("button", { class: "link", type: "button", onclick: () => { clearTimeout(avanzar); delete resp[d.id]; guardar(); pintar(); } }, "Cambiar"));
+        el("span", { class: "que" + (r.tipo === "no_se_entiende" ? " ojo" : r.tipo === "pasar" ? " pasa" : "") }, (r.tipo === "pasar" ? "→ " : "✓ ") + (r.tipo === "frase" ? "Frase completa corregida" : textoResp(r))),
+        el("button", { class: "link", type: "button", onclick: () => { clearTimeout(avanzar); delete resp[d.id]; guardar(); pintar(); } }, "Cambiar"),
+        r.tipo === "frase" ? el("p", { class: "queda" }, el("span", { class: "rot" }, "Así queda la frase:"), el("b", {}, r.texto)) : null,
+        medio !== null && tieneFrase(d) ? queda(d, medio) : null,
+        medio !== null && d.unica ? el("button", { class: "link", type: "button", onclick: () => abrirCompleta(d, medio) }, "¿Sobra o falta algo? Corregir la frase completa") : null);
     } else if (editando) {
-      const ta = el("textarea", { id: "escrito", rows: 3, autocapitalize: "none", spellcheck: "true", oninput: (e) => { borrador = e.target.value; } });
+      const previa = !completa && tieneFrase(d) && !d.falta;
+      const ta = el("textarea", { id: "escrito", rows: completa ? 6 : 3, autocapitalize: "none", spellcheck: "true",
+        oninput: (e) => { borrador = e.target.value; const q = $("#queda-viva b"); if (q) q.textContent = borrador; } });
       ta.value = borrador;
       cuerpo = el("div", { class: "editor" },
-        el("label", { for: "escrito" }, d.falta ? "Escribe el dato que dicta (o una indicación)" : "Escribe lo que dice (o una indicación)"), ta,
+        el("label", { for: "escrito" }, completa ? "Corrige la frase completa: así va a quedar en el informe" : d.falta ? "Escribe el dato que dicta (o una indicación)" : "Escribe lo que dice (o una indicación)"), ta,
+        previa ? queda(d, borrador, "queda-viva") : null,
         errorDuda ? el("p", { class: "error", role: "alert" }, errorDuda) : null,
         el("div", { class: "acciones" },
-          el("button", { class: "primario", type: "button", onclick: () => { const t = ta.value.trim(); if (!t) { errorDuda = "Escribe lo que dice antes de guardar."; return pintar(); } responder("dice", t); } }, "Guardar"),
-          el("button", { type: "button", onclick: () => { editando = false; errorDuda = ""; pintar(); } }, "Cancelar")));
+          el("button", { class: "primario", type: "button", onclick: () => { const t = ta.value.trim().replace(/\s+/g, " "); if (!t) { errorDuda = completa ? "Escribe la frase antes de guardar." : "Escribe lo que dice antes de guardar."; return pintar(); } responder(completa ? "frase" : "dice", t); } }, "Guardar"),
+          el("button", { type: "button", onclick: () => { editando = false; completa = false; errorDuda = ""; pintar(); } }, "Cancelar")),
+        !completa && d.unica ? el("button", { class: "link", type: "button", onclick: () => abrirCompleta(d, ta.value.trim() || d.texto) }, "¿Sobra o falta algo fuera de lo destacado? Corregir la frase completa") : null,
+        completa ? el("button", { class: "link", type: "button", onclick: () => { completa = false; borrador = d.texto; errorDuda = ""; pintar(); } }, "Corregir solo lo destacado") : null);
       setTimeout(() => { const t = $("#escrito"); if (t && document.activeElement !== t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 0);
     } else {
       cuerpo = el("div", { class: "editor" },
         el("div", { class: "acciones" },
           d.propuesta && !d.falta ? el("button", { class: "ancho primario", type: "button", onclick: () => responder("dice", d.propuesta, true) }, "Sí, dice «" + d.propuesta + "»") : null,
           d.falta ? null : el("button", { class: d.propuesta ? null : "primario", type: "button", onclick: () => responder("bien") }, "Está bien así"),
-          el("button", { type: "button", class: d.falta ? "ancho primario" : null, onclick: () => { editando = true; borrador = d.falta ? "" : d.texto; pintar(); } }, d.falta ? "Escribir el dato" : "Dice otra cosa")),
+          el("button", { type: "button", class: d.falta ? "ancho primario" : null, onclick: () => { editando = true; completa = false; borrador = d.falta ? "" : d.texto; pintar(); } }, d.falta ? "Escribir el dato" : "Dice otra cosa"),
+          d.corrige && d.unica ? el("button", { class: "ancho", type: "button", onclick: () => abrirCompleta(d, d.texto) }, "Corregir la frase completa") : null),
         ANDRES ? el("button", { class: "link", type: "button", onclick: () => responder("pasar") }, "Pasar a Cami")
                : el("button", { class: "link", type: "button", onclick: () => responder("no_se_entiende") }, "No se entiende"));
     }
@@ -499,6 +521,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
       d.pista ? el("p", { class: "pista" }, d.propuesta ? "Probablemente dice " : "Puede que diga ", el("b", {}, d.pista), d.propuesta ? ". Escúchalo antes de confirmar; puede no ser eso." : ". Confírmalo escuchando; puede no ser eso.") : null,
       d.nombre ? el("p", { class: "silencio" }, el("b", {}, "Ojo: "), d.falta ? "falta el nombre del paciente. El informe no sale hasta que lo escribas." : "el nombre del paciente está en duda. El informe no sale hasta confirmarlo.") : null,
       d.silencio ? el("p", { class: "silencio" }, el("b", {}, "Ojo: "), `la transcripción lo pone ${d.silencio}, donde no se escucha voz. Puede ser una palabra inventada: confírmalo escuchando.`) : null,
+      d.corrige ? el("p", { class: "silencio" }, el("b", {}, "Ojo: "), "aquí Emilio parece corregirse al dictar. Al informe va solo lo corregido: revisa cómo queda la frase" + (d.unica ? " y, si sobra algo, corrígela completa." : ".")) : null,
       el("div", { class: "audio", id: "audio" }),
       cuerpo);
     pintarAudio();
@@ -514,7 +537,7 @@ pre { margin: 0; font: .92rem/1.45 var(--mono); white-space: pre-wrap; overflow-
     for (const d of DUDAS) {
       if (vistos.has(d.inf)) continue; vistos.add(d.inf);
       const lineas = d.inf.dudas.filter(x => enviable(resp[x.id])).map(x => `${x.n}. ` + (x.seg ? (x.audio ? `audio ${x.audio}, ` : "") + x.seg + " — " : "") +
-        (resp[x.id].tipo === "bien" ? "Está bien" : resp[x.id].tipo === "no_se_entiende" ? "No se entiende" : `Dice: «${resp[x.id].texto}»`));
+        (resp[x.id].tipo === "bien" ? "Está bien" : resp[x.id].tipo === "no_se_entiende" ? "No se entiende" : resp[x.id].tipo === "frase" ? `Frase completa: «${resp[x.id].texto}»` : `Dice: «${resp[x.id].texto}»`));
       if (lineas.length) bloques.push(`${d.inf.paciente} — ${d.inf.clinica}\n` + lineas.join("\n"));
     }
     return bloques.join("\n\n");
